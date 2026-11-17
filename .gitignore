@@ -1,0 +1,7 @@
+node_modules/
+.env
+*.log
+.DS_Store
+
+# NOTE: /.kiro is intentionally NOT ignored.
+# Kiroween requires the /.kiro directory (specs, steering, hooks) in the repo.

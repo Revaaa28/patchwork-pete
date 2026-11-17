@@ -1,0 +1,1 @@
+{"description":"When an organ adapter or the pet-state engine is saved, run the organ-adapter and state test suites so a broken stitch is caught before it reaches Pete.","enabled":true,"name":"organ-tests-on-save","then":{"command":"npm test","cwd":".","type":"runCommand"},"when":{"patterns":["src/organs/*.js","src/state.js","src/fetchJson.js"],"type":"fileEdited"}}

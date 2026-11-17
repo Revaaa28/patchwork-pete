@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Patchwork Pete — a pet sewn from live APIs</title>
+<meta name="description" content="Patchwork Pete is one shared virtual pet sewn from live, incompatible APIs. He lives in Palangka Raya, Borneo — the lungs of the world: CoinGecko is his heart, Borneo's weather is his face, Borneo's real air fills his stitched lungs, Wikipedia is his brain, GitHub commits are his food. When Borneo burns, Pete coughs.">
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧟</text></svg>">
+</head>
+<body>
+<div class="bg-glow"></div>
+<header class="topbar">
+  <div class="brand"><span class="brand-bolt">⚡</span> PATCHWORK PETE</div>
+  <div class="topbar-sub">one shared pet, sewn from live APIs · Kiroween 2026 · Frankenstein</div>
+  <div id="overallBadge" class="badge badge-loading">waking Pete up…</div>
+  <div id="homeLabel" class="home-label">🏠 Pete lives in … — his mood and his lungs always read that one benchmark place, so every visitor sees the same Pete.</div>
+</header>
+
+<main class="layout">
+  <section class="lab-card pet-card">
+    <div class="card-title">🧪 The Creature</div>
+    <canvas id="peteCanvas" width="360" height="420" aria-label="Pixel-art Patchwork Pete"></canvas>
+    <div id="petSummary" class="pet-summary">Stitching organs together…</div>
+    <div class="scores" id="scores"></div>
+    <div class="actions">
+      <button data-action="stomach">🍽️ Feed Pete</button>
+      <button data-action="brain">🧠 Teach Pete</button>
+      <button data-action="mood">🌦️ Check home weather</button>
+      <button data-action="lungs">🫁 Check home air</button>
+      <button data-action="heart">❤️ Check heart</button>
+      <button id="speakBtn" class="speak">🔊 Make Pete speak</button>
+    </div>
+    <div class="hint">Feed = fresh GitHub commits · Teach = a new Wikipedia fact · Pete's voice runs in your browser (Web Speech API).</div>
+  </section>
+
+  <section class="lab-card">
+    <div class="card-title">🗺️ Stitch Map — every organ, live</div>
+    <div id="organGrid" class="organ-grid"></div>
+    <div class="law">⚖️ <b>The law of the lab:</b> Pete's state is computed by deterministic code from raw organ readings — and only from his benchmark home's readings. If an API dies, that body part goes grey and Pete limps — he never fakes a reading.</div>
+  </section>
+
+  <section class="lab-card compare-card">
+    <div class="card-title">🌍 Your Air vs Pete's Borneo Air</div>
+    <p class="compare-intro">Pete lives in Borneo and stays put — comparing never changes him. Pick your place and see your sky and air next to his Borneo sky and air.</p>
+    <div class="compare-controls">
+      <button id="geoBtn">📍 Use my location</button>
+      <span class="search-wrap">
+        <input id="citySearch" type="text" placeholder="Search a city…" autocomplete="off">
+        <div id="searchResults" class="search-results"></div>
+      </span>
+    </div>
+    <div class="presets" id="presets"></div>
+    <div id="compareResult" class="compare-result"><div class="diary-empty">No comparison yet — choose a place above.</div></div>
+  </section>
+
+  <section class="lab-card diary-card">
+    <div class="card-title">📓 Pete's Diary</div>
+    <div id="diaryList" class="diary-list"><div class="diary-empty">No entries yet — Pete is still waking up.</div></div>
+  </section>
+</main>
+
+<footer>
+  Heart: CoinGecko · Face: the benchmark home's weather (Open-Meteo) · Lungs: the benchmark home's air (Open-Meteo Air Quality; NASA FIRMS hotspots when configured) · Brain: Wikipedia · Stomach: GitHub @Revaaa28 · Voice: Web Speech API · Diary: Gemini when available, honest templates otherwise.
+</footer>
+<script src="/app.js"></script>
+</body>
+</html>
