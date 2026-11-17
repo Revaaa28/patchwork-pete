@@ -354,6 +354,23 @@ const ORGAN_META = [
   ['voice', ICONS.voice + 'Voice', 'Web Speech API — your browser'],
 ];
 
+/* ── "IT'S ALIVE!" — fires once per visit, the first time every data
+   organ reads alive at once (e.g. right after Pete gets a home and his
+   face + lungs wake). Pure theatre on top of real state; nothing faked. ── */
+let aliveCelebrated = false;
+function maybeCelebrateAlive(payload) {
+  if (aliveCelebrated) return;
+  const keys = ['heart', 'mood', 'lungs', 'brain', 'stomach'];
+  const organs = payload.organs || {};
+  if (!keys.every((k) => organs[k] && organs[k].ok)) return;
+  aliveCelebrated = true;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  setTimeout(() => {
+    document.body.classList.add('alive-strike');
+    setTimeout(() => document.body.classList.remove('alive-strike'), 3000);
+  }, 1100);
+}
+
 function render(payload) {
   current = payload;
   const s = payload.state;
@@ -362,6 +379,7 @@ function render(payload) {
   badge.className = 'badge badge-' + s.overall;
   $('petSummary').textContent = s.summary;
   document.body.classList.add('revealed');
+  maybeCelebrateAlive(payload);
 
   /* ── feed the living atmosphere with the REAL readings ── */
   const heart = payload.organs.heart;
