@@ -22,7 +22,7 @@ The first thing a visitor does is answer *“Where shall Pete live?”* — by s
 | 🫁 Lungs | lungs | Open-Meteo Air Quality (keyless) where Pete lives | PM2.5 / PM10 / US AQI → breathing score on the standard AQI bands: clean = easy, haze = coughing, grey-brown lungs (cached 10 min). Optional: NASA FIRMS fire hotspots when `FIRMS_MAP_KEY` is set — otherwise reported as not configured, never faked. No home chosen yet → honestly `awaiting` |
 | 🧠 Brain | head | Wikipedia random article | Facts Pete has learned; he remembers the last 5 |
 | 🍽️ Stomach | belly | GitHub API for [@Revaaa28](https://github.com/Revaaa28) | Events feed finds today's pushed repos, commits API counts the real commits — where "today" is the local day of the place Pete currently lives (its timezone comes with the Open-Meteo readings; UTC until he has a home); zero commits = hungry Pete |
-| 🔊 Voice | mouth | Web Speech API + WebAudio | Runs entirely in the visitor's browser — Pete speaks his own status aloud in a deep, slow, haunted delivery (deepest available English voice, pitch 0.4, rate 0.86, short phrases with held breaths). The separate **Haunt the Lab** toggle synthesizes the room's ambience live — WebAudio wind, a rare minor-key bell, an occasional creak — no audio files, off by default, and labelled as synthesized wherever it appears |
+| 🔊 Voice | mouth | Web Speech API + WebAudio | Runs entirely in the visitor's browser — Pete speaks his own status aloud in a deep, slow, haunted delivery (deepest available English voice, pitch 0.4, rate 0.86, short phrases with held breaths). The separate **Haunt the Lab** toggle synthesizes the room's ambience live — WebAudio wind, a rare minor-key bell, an occasional creak, and an original fourteen-note music-box melody in A minor (sparse, slightly worn detune, followed by a long wind-only pause) — no audio files, off by default, and labelled as synthesized wherever it appears |
 | 📓 Nervous system | diary | Gemini (optional) | Writes diary lines *from* the computed state. No key / failure → deterministic template lines, honestly labelled |
 
 ## The presentation
@@ -74,7 +74,7 @@ src/state.js         pure deterministic pet-state engine
 src/location.js      visitor-chosen home validation + cache keys (no default home exists)
 src/fetchJson.js     timeout + retry/backoff + TTL-cache + last-good fetch helper
 src/organs/          heart.js · mood.js · lungs.js · brain.js · stomach.js · diary.js
-public/              pixel Pete (canvas), stitch map, home picker, diary, spooky voice + synthesized ambience — no build step (phrases.js is shared with the tests)
+public/              pixel Pete (canvas), stitch map, home picker, diary, spooky voice + synthesized ambience — no build step (phrases.js and melody.js are shared with the tests)
 test/                node:test suites
 .kiro/               specs · steering · hooks
 ```

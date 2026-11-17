@@ -564,14 +564,15 @@ $('speakBtn').addEventListener('click', async () => {
 
 /* ── HAUNT THE LAB: synthesized ambience ─────────────────
    No audio files, nothing recorded: the wind, the distant
-   minor-key bell and the old-house creaks are all synthesized
-   live with WebAudio when — and only when — a visitor presses
-   the toggle (it is OFF by default; browsers demand the click
-   anyway). One AudioContext exists for the page's whole life
-   and is reused across toggles, so nothing leaks; stopping
-   fades the master out, halts every source and timer, and
-   suspends the context. Labelled honestly wherever it appears:
-   this is generated atmosphere, not a field recording. */
+   minor-key bell, the old-house creaks and the original
+   music-box phrase are all synthesized live with WebAudio
+   when — and only when — a visitor presses the toggle (it is
+   OFF by default; browsers demand the click anyway). One
+   AudioContext exists for the page's whole life and is reused
+   across toggles, so nothing leaks; stopping fades the master
+   out, halts every source and timer, and suspends the context.
+   Labelled honestly wherever it appears: this is generated
+   atmosphere, not a field recording. */
 let hauntCtx = null;
 let haunt = null;
 function noiseBuffer(ctx, seconds) {
@@ -672,6 +673,55 @@ function hauntStart() {
   };
   nodes.timers.push(setTimeout(creak, 6500));
 
+  // — an original music-box phrase, played by a haunted toy —
+  // The note table lives in melody.js and is deliberately sparse:
+  // fourteen A-minor notes with uneven, hesitant spacing, then
+  // 12-18 seconds in which only the wind remains. Each note is a
+  // sine fundamental with two decaying harmonics; the table's
+  // few-cents detune offsets make the mechanism sound old and
+  // worn without turning the phrase into a parody of bad tuning.
+  const melody = window.PETE_MELODY;
+  if (melody) {
+    const melodyBus = ctx.createGain();
+    melodyBus.gain.value = 0.9;
+    melodyBus.connect(master);
+    nodes.melodyBus = melodyBus;
+
+    const playMusicBoxNote = (note, phraseStart) => {
+      const t = phraseStart + note.startSec;
+      const noteGain = ctx.createGain();
+      noteGain.gain.setValueAtTime(0.0001, t);
+      noteGain.gain.exponentialRampToValueAtTime(0.075 * note.velocity, t + 0.008);
+      noteGain.gain.exponentialRampToValueAtTime(0.0001, t + note.ringSec);
+      noteGain.connect(melodyBus);
+      [[1, 1], [2, 0.28], [3, 0.1]].forEach(([harmonic, level]) => {
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = melody.midiToFrequency(note.midi) * harmonic;
+        osc.detune.value = note.detuneCents;
+        const partialGain = ctx.createGain();
+        partialGain.gain.value = level;
+        osc.connect(partialGain); partialGain.connect(noteGain);
+        osc.start(t); osc.stop(t + note.ringSec + 0.05);
+        nodes.oscs.push(osc);
+      });
+    };
+
+    const scheduleMelody = () => {
+      if (haunt !== nodes) return; // a stopped or replaced session stays silent
+      const phraseStart = ctx.currentTime + 0.05;
+      melody.notes.forEach((note) => playMusicBoxNote(note, phraseStart));
+      const pauseSec = melody.pauseMinSec +
+        Math.random() * (melody.pauseMaxSec - melody.pauseMinSec);
+      nodes.timers.push(setTimeout(
+        scheduleMelody,
+        (melody.phraseEndSec + pauseSec) * 1000,
+      ));
+    };
+    // Let the wind establish itself before the toy first wakes.
+    nodes.timers.push(setTimeout(scheduleMelody, 2100));
+  }
+
   haunt = nodes;
   const btn = $('hauntBtn');
   btn.textContent = 'Silence the Lab';
@@ -692,7 +742,8 @@ function hauntStop() {
     h.sources.forEach((s) => { try { s.stop(); } catch { /* already silent */ } });
     h.oscs.forEach((o) => { try { o.stop(); } catch { /* already silent */ } });
     try { h.master.disconnect(); } catch { /* nothing to undo */ }
-    if (hauntCtx && hauntCtx.state === 'running') hauntCtx.suspend();
+    // If a new haunt has already started, it owns the shared context now.
+    if (!haunt && hauntCtx && hauntCtx.state === 'running') hauntCtx.suspend();
   }, 700);
   const btn = $('hauntBtn');
   btn.textContent = 'Haunt the Lab';
