@@ -128,8 +128,16 @@ async function getLungs({ force = false, fetchFn, location, firmsKey, waqiToken,
   const cached = cache.get(key, force);
   if (cached) return cached;
   const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${loc.lat}&longitude=${loc.lon}&current=pm2_5,pm10,us_aqi,european_aqi&timezone=auto`;
+  // When a WAQI fallback exists, the primary gets a SHORT retry budget:
+  // a 429 from Render's shared IP otherwise burns ~12s of backoff before
+  // the fallback is even tried (measured live: a forced lungs refresh
+  // took 24s, almost all of it waiting on the primary's retries). With
+  // no fallback configured the full budget stays — retries are then the
+  // only resilience the organ has. Explicit caller delays (tests) win.
+  const hasFallback = (waqiToken !== undefined ? waqiToken : process.env.WAQI_TOKEN) ? true : false;
+  const primaryRetryDelays = retryDelays !== undefined ? retryDelays : (hasFallback ? [700, 1800] : undefined);
   try {
-    const json = await fetchJson(url, { fetchFn, retryDelays, sleep });
+    const json = await fetchJson(url, { fetchFn, retryDelays: primaryRetryDelays, sleep });
     const cur = json && json.current;
     if (!cur || (typeof cur.pm2_5 !== 'number' && typeof cur.us_aqi !== 'number')) {
       throw new Error('Unexpected Open-Meteo AQ payload shape');
