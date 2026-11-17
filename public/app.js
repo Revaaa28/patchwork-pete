@@ -999,14 +999,17 @@ $('citySearch').addEventListener('input', (e) => {
   }, 300);
 });
 
-/* ── THE GUIDE: a three-step welcome ───────────────────────
+/* ── THE GUIDE: a four-step welcome (tutorial v2) ─────────
    First visit only: an elegant little tour — meet Pete, learn
-   that his organs are real data sources, then land on the home
-   picker. It is remembered in localStorage ('seen' is per
+   that his organs are real data sources, choose his home, then
+   open the Data Menu. The v2 key means visitors who finished
+   the old 3-step tour are offered this clearer one once; after
+   that it is remembered in localStorage ('seen' is per
    browser, like Pete's home), never shown uninvited again, and
-   the GUIDE button in the header reopens it on demand. Plain
-   fade/slide only — it never blocks the lab for long. */
-const GUIDE_KEY = 'patchwork-pete-guide-seen';
+   the GUIDE button in the header reopens it on demand. Steps
+   carry real action buttons: the tour does not just describe
+   the picker and the menu, it takes the visitor to them. */
+const GUIDE_KEY = 'patchwork-pete-guide-v2-seen';
 const GUIDE_STEPS = [
   {
     title: 'Meet Pete',
@@ -1025,8 +1028,12 @@ const GUIDE_STEPS = [
       <p>If an API dies, that organ goes grey and Pete limps. <b>He never fakes a reading.</b></p>`,
   },
   {
-    title: 'How to Visit',
-    body: `<p><b>First, choose where Pete lives</b> — search a country or city, use your location, or pick a capital. His face and lungs wake up in that place.</p><p>Then open the <b>Data Menu</b> to inspect each organ's real reading, and play: <b>Feed Pete</b>, <b>Teach Pete</b>, make him <b>Speak</b>, or <b>Haunt the Lab</b> and listen for the music box.</p>`,
+    title: 'Choose His Home',
+    body: `<p>Pete wakes up <b>where you house him</b>. Search any country or city, tap “Use My Location”, or pick a capital — his face wears that sky and his lungs breathe that air, and the choice is remembered in your browser.</p><p>Try it right now, or keep walking the tour first:</p><p><button type="button" class="guide-action" data-guide-action="home">Open the home picker</button></p>`,
+  },
+  {
+    title: 'Read Him in the Data Menu',
+    body: `<p>Below the stage, the <b>Data Menu</b> opens each organ's real reading — not just a score: the actual temperature and wind, the actual PM2.5 and AQI with what that band means for breathing, the actual Bitcoin price beating in his chest, today's commits in his stomach, and his diary.</p><p>Then play: <b>Feed Pete</b>, <b>Teach Pete</b>, make him <b>Speak</b>, or <b>Haunt the Lab</b> and listen for the music box.</p><p><button type="button" class="guide-action" data-guide-action="menu:air">Try the Air menu</button> <button type="button" class="guide-action" data-guide-action="menu:heart">Try the Heart menu</button></p>`,
   },
 ];
 let guideStep = 0;
@@ -1037,18 +1044,41 @@ function renderGuideStep() {
   $('guideBody').innerHTML = step.body;
   $('guideDots').innerHTML = GUIDE_STEPS.map((_, i) => `<span class="${i === guideStep ? 'on' : ''}"></span>`).join('');
   $('guideBack').disabled = guideStep === 0;
-  $('guideNext').textContent = guideStep === GUIDE_STEPS.length - 1 ? 'Choose Pete\'s Home' : 'Next';
+  $('guideNext').textContent = guideStep === GUIDE_STEPS.length - 1
+    ? (peteHome ? 'Open the Data Menu' : 'Choose Pete\'s Home')
+    : 'Next';
 }
 function showGuide() {
   guideStep = 0;
   renderGuideStep();
   $('guideOverlay').hidden = false;
 }
-function closeGuide() {
+function closeGuide(dest) {
   $('guideOverlay').hidden = true;
   try { localStorage.setItem(GUIDE_KEY, '1'); } catch { /* private mode: the tour simply returns next visit */ }
-  $('homePicker').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  if (dest === 'menu') {
+    $('dataMenu').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } else if (dest === 'home' || !peteHome) {
+    $('homePicker').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (dest === 'home') setTimeout(() => { const s = $('citySearch'); if (s) s.focus({ preventScroll: true }); }, 650);
+  } else {
+    $('dataMenu').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 }
+// The tour's own action buttons: they end the tour by DOING the
+// step — opening the picker, or opening the Data Menu on a tab.
+$('guideBody').addEventListener('click', (ev) => {
+  const btn = ev.target.closest('[data-guide-action]');
+  if (!btn) return;
+  const action = btn.dataset.guideAction;
+  if (action === 'home') { closeGuide('home'); return; }
+  if (action.startsWith('menu:')) {
+    const tab = action.slice(5);
+    const tabBtn = document.querySelector(`.menu-tab[data-menu="${tab}"]`);
+    if (tabBtn) tabBtn.click();
+    closeGuide('menu');
+  }
+});
 $('guideNext').addEventListener('click', () => {
   if (guideStep < GUIDE_STEPS.length - 1) { guideStep += 1; renderGuideStep(); }
   else closeGuide();
