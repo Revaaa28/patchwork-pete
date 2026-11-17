@@ -14,25 +14,48 @@ let t0 = performance.now();
 const GREY = '#5b6373';
 const GREY_D = '#454b58';
 
+/* ── Living atmosphere ─────────────────────────────────────
+   Every effect below is DRIVEN BY PETE'S REAL READINGS, set in
+   render() from the payload. Nothing here invents data: the smoke
+   is Borneo's measured AQI, the ECG rate is derived from the real
+   BTC 24h move, the breathing rate/depth from the breathing
+   score, the scene light from the real home weather condition. */
+const ATMO = {
+  bpm: 60,            // heartbeats per minute (from BTC move + energy)
+  heartAlive: false,
+  heartText: '',
+  breathHz: 0.28,     // breaths per second (from breathing score)
+  breathDepth: 1,     // 1 = deep & easy, ~0.4 = shallow & laboured
+  smoke: 0.04,        // 0..1 smoke density (from home US AQI)
+  sky: 'partly-cloudy', // home weather condition bucket
+};
+const REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 function px(x, y, w, h, color) {
   ctx.fillStyle = color;
   ctx.fillRect(x * P, y * P, w * P, h * P);
 }
 function stitch(x, y, w, h) {
-  ctx.fillStyle = 'rgba(10,10,14,.85)';
-  for (let i = 0; i < Math.max(w, h); i++) {
-    if (i % 2 === 0) ctx.fillRect((x + (w >= h ? i : 0)) * P + 4, (y + (h > w ? i : 0)) * P + 4, 4, 4);
+  // Gold thread: a dark underlay pass, then the brass stitch on top —
+  // Pete is sewn with the manor's finest gold, like everything here.
+  for (let pass = 0; pass < 2; pass++) {
+    ctx.fillStyle = pass === 0 ? 'rgba(10,8,2,.9)' : '#d8b45a';
+    const off = pass === 0 ? 1 : 0;
+    for (let i = 0; i < Math.max(w, h); i++) {
+      if (i % 2 === 0) ctx.fillRect((x + (w >= h ? i : 0)) * P + 4 + off, (y + (h > w ? i : 0)) * P + 4 + off, 4, 4);
+    }
   }
 }
 
 function drawPete(now) {
   const t = (now - t0) / 1000;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  // lab backdrop: moon window + floor
-  ctx.fillStyle = '#0d1120'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#1a2340'; ctx.fillRect(0, 384, canvas.width, 36);
-  ctx.fillStyle = '#e8ecf6'; ctx.beginPath(); ctx.arc(316, 44, 17, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#0d1120'; ctx.beginPath(); ctx.arc(308, 38, 15, 0, Math.PI * 2); ctx.fill();
+  // The chamber itself (arch window, spotlight, floor) is the CSS scene
+  // behind this transparent canvas; Pete only casts a soft shadow here.
+  ctx.fillStyle = 'rgba(0,0,0,.4)';
+  ctx.beginPath(); ctx.ellipse(canvas.width / 2, 402, 92, 11, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,.3)';
+  ctx.beginPath(); ctx.ellipse(canvas.width / 2, 402, 58, 7, 0, 0, Math.PI * 2); ctx.fill();
 
   const s = current && current.state;
   const organs = current && current.organs;
@@ -41,13 +64,17 @@ function drawPete(now) {
   const smoky = s ? s.smoky : false;
   const bob = limping ? Math.round(Math.sin(t * 3) * 0.6) : Math.round(Math.sin(t * 1.6) * 1);
   const lean = limping ? Math.sin(t * 3) * 0.05 : 0;
+  // Breathing: the whole chest swells at the rate/depth the real
+  // breathing score dictates — slow & deep when Borneo's air is clean,
+  // fast & shallow when it is not.
+  const breathPhase = Math.sin(2 * Math.PI * ATMO.breathHz * t);
   // Cough: short violent bursts, only while the home air is hazy.
   const cough = smoky && Math.sin(t * 0.9) > 0.55 ? Math.round(Math.sin(t * 30) * 1) : 0;
 
   ctx.save();
   ctx.translate(canvas.width / 2, 0);
   ctx.rotate(lean);
-  ctx.translate(-canvas.width / 2 + cough * 3, bob * P * 0.4);
+  ctx.translate(-canvas.width / 2 + cough * 3, bob * P * 0.4 + breathPhase * 2.4 * ATMO.breathDepth);
 
   // palette per organ
   const brainC = dead('brain') ? GREY : '#ff9ec6';
@@ -85,7 +112,7 @@ function drawPete(now) {
     : breathing >= 55 ? '#e58aa0'
     : breathing >= 35 ? '#b0826e'
     : '#6e5a4e';
-  const breathePulse = dead('lungs') ? 0 : Math.round(Math.sin(t * 2.2) * 0.4);
+  const breathePulse = dead('lungs') ? 0 : Math.round(breathPhase * 0.9 * ATMO.breathDepth);
   px(10, 20 + breathePulse, 2, 5, lungC); px(19, 20 + breathePulse, 2, 5, lungC);
   px(10, 25 + breathePulse, 1, 1, lungC); px(20, 25 + breathePulse, 1, 1, lungC);
   if (smoky) { // drifting smoke wisps around Pete
@@ -95,8 +122,10 @@ function drawPete(now) {
     ctx.fillRect(250 - w2, 190 + Math.cos(t * 1.6) * 6, 32, 8);
   }
 
-  // ---- heart on the chest (pulses; grey if the heart organ is dead) ----
-  const beat = heartAlive ? 1 + Math.max(0, Math.sin(t * (2 + (s ? s.scores.energy : 50) / 25))) * 0.18 : 1;
+  // ---- heart on the chest (pulses at Pete's real derived BPM — the same
+  // rate the gold ECG line below the stage is drawn at; grey if dead) ----
+  const beatPhase = (t * ATMO.bpm / 60) % 1;
+  const beat = heartAlive ? 1 + Math.pow(Math.max(0, Math.sin(beatPhase * Math.PI)), 3) * 0.22 : 1;
   ctx.save();
   ctx.translate(13.5 * P, 20.5 * P);
   ctx.scale(beat, beat);
@@ -151,6 +180,125 @@ function drawPete(now) {
 }
 requestAnimationFrame(drawPete);
 
+/* ── Atmosphere canvas: gold dust, embers, and Borneo smoke ──
+   One transparent canvas over the chamber. Dust & embers are the
+   manor's air; the SMOKE is data — its density is ATMO.smoke,
+   derived from Pete's real home US AQI. Clean air: you can barely
+   see it. Haze: thick drifts roll across the glass and Pete coughs
+   behind them (his cough lives in drawPete). */
+const fx = document.getElementById('fxCanvas');
+const fctx = fx.getContext('2d');
+const scene = document.getElementById('scene');
+let FW = 0, FH = 0;
+function sizeFx() {
+  const r = scene.getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+  FW = Math.max(300, Math.round(r.width)); FH = Math.max(300, Math.round(r.height));
+  fx.width = Math.round(FW * dpr); fx.height = Math.round(FH * dpr);
+  fctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+sizeFx();
+window.addEventListener('resize', sizeFx);
+
+const dust = Array.from({ length: 42 }, () => ({
+  x: Math.random(), y: Math.random(), r: 0.6 + Math.random() * 1.5,
+  vy: 0.004 + Math.random() * 0.010, vx: (Math.random() - 0.5) * 0.004, tw: Math.random() * Math.PI * 2,
+}));
+const embers = Array.from({ length: 9 }, () => ({
+  x: Math.random(), y: 0.55 + Math.random() * 0.45, r: 1 + Math.random() * 1.8,
+  vy: 0.02 + Math.random() * 0.03, vx: (Math.random() - 0.5) * 0.01,
+}));
+const puffs = Array.from({ length: 26 }, (_, i) => ({
+  x: Math.random(), y: 0.35 + Math.random() * 0.65, r: 46 + Math.random() * 90,
+  vx: 0.006 + Math.random() * 0.014, wob: Math.random() * Math.PI * 2, seed: i * 1.7,
+}));
+
+function drawFx(now) {
+  const t = now / 1000;
+  fctx.clearRect(0, 0, FW, FH);
+  // drifting smoke — alpha & count scale with the real AQI-derived density
+  const density = ATMO.smoke;
+  if (density > 0.02) {
+    const active = Math.max(2, Math.round(puffs.length * density));
+    for (let i = 0; i < active; i++) {
+      const p = puffs[i];
+      const x = ((p.x + t * p.vx) % 1.25 - 0.12) * FW;
+      const y = p.y * FH + Math.sin(t * 0.35 + p.wob) * 14;
+      const a = density * 0.16 * (0.7 + 0.3 * Math.sin(t * 0.5 + p.seed));
+      const g = fctx.createRadialGradient(x, y, 0, x, y, p.r);
+      g.addColorStop(0, `rgba(168,158,146,${a.toFixed(3)})`);
+      g.addColorStop(1, 'rgba(168,158,146,0)');
+      fctx.fillStyle = g;
+      fctx.fillRect(x - p.r, y - p.r, p.r * 2, p.r * 2);
+    }
+  }
+  // gold dust motes in the spotlight
+  for (const d of dust) {
+    d.y -= d.vy / 60; d.x += d.vx / 60 + Math.sin(t * 0.6 + d.tw) * 0.00012;
+    if (d.y < -0.02) { d.y = 1.02; d.x = Math.random(); }
+    const tw = 0.35 + 0.65 * Math.abs(Math.sin(t * 0.9 + d.tw));
+    fctx.fillStyle = `rgba(238,214,136,${(0.5 * tw).toFixed(3)})`;
+    fctx.beginPath(); fctx.arc(d.x * FW, d.y * FH, d.r, 0, Math.PI * 2); fctx.fill();
+  }
+  // a few embers rising from below the floor grate
+  for (const e of embers) {
+    e.y -= e.vy / 60; e.x += e.vx / 60;
+    if (e.y < 0.45) { e.y = 0.98; e.x = Math.random(); }
+    fctx.fillStyle = 'rgba(255,150,60,.55)';
+    fctx.shadowColor = 'rgba(255,120,40,.9)'; fctx.shadowBlur = 7;
+    fctx.beginPath(); fctx.arc(e.x * FW, e.y * FH, e.r, 0, Math.PI * 2); fctx.fill();
+    fctx.shadowBlur = 0;
+  }
+  if (!REDUCED) requestAnimationFrame(drawFx);
+}
+requestAnimationFrame(drawFx);
+
+/* ── Gold ECG: a scrolling cardiogram under the stage ──
+   The waveform is a stylised QRS complex repeating at ATMO.bpm —
+   the rate derived from the real BTC 24h move. When the heart
+   organ is dead the line falls flat and grey. Honest to the end. */
+const ecg = document.getElementById('ecgCanvas');
+const ectx = ecg.getContext('2d');
+function ecgY(p) {
+  if (p < 0.12) return Math.sin(p / 0.12 * Math.PI) * 0.14;
+  if (p < 0.20) return -Math.sin((p - 0.12) / 0.08 * Math.PI) * 0.10;
+  if (p < 0.27) return Math.sin((p - 0.20) / 0.07 * Math.PI) * 1.0;
+  if (p < 0.36) return -Math.sin((p - 0.27) / 0.09 * Math.PI) * 0.28;
+  if (p < 0.60) return Math.sin((p - 0.36) / 0.24 * Math.PI) * 0.20;
+  return 0;
+}
+function drawEcg(now) {
+  const t = now / 1000;
+  const W = ecg.width, H = ecg.height, mid = H * 0.58, amp = H * 0.36;
+  ectx.clearRect(0, 0, W, H);
+  // faint ruled paper
+  ectx.strokeStyle = 'rgba(201,162,39,.07)'; ectx.lineWidth = 1;
+  for (let gx = 0; gx < W; gx += 22) { ectx.beginPath(); ectx.moveTo(gx, 0); ectx.lineTo(gx, H); ectx.stroke(); }
+  ectx.beginPath(); ectx.moveTo(0, mid); ectx.lineTo(W, mid); ectx.stroke();
+  const pxPerSec = 130;
+  ectx.beginPath();
+  for (let x = 0; x <= W; x += 2) {
+    const tt = t - (W - x) / pxPerSec;
+    const v = ATMO.heartAlive ? ecgY((tt * ATMO.bpm / 60) % 1) : 0;
+    const y = mid - v * amp;
+    if (x === 0) ectx.moveTo(x, y); else ectx.lineTo(x, y);
+  }
+  ectx.strokeStyle = ATMO.heartAlive ? '#e9c860' : '#5b6373';
+  ectx.lineWidth = 2.2;
+  ectx.shadowColor = ATMO.heartAlive ? 'rgba(238,214,136,.85)' : 'transparent';
+  ectx.shadowBlur = ATMO.heartAlive ? 9 : 0;
+  ectx.stroke();
+  ectx.shadowBlur = 0;
+  // leading dot
+  if (ATMO.heartAlive) {
+    const v = ecgY((t * ATMO.bpm / 60) % 1);
+    ectx.fillStyle = '#fdf3c4';
+    ectx.beginPath(); ectx.arc(W - 2, mid - v * amp, 3.2, 0, Math.PI * 2); ectx.fill();
+  }
+  if (!REDUCED) requestAnimationFrame(drawEcg);
+}
+requestAnimationFrame(drawEcg);
+
 /* ---------- data rendering ---------- */
 const $ = (id) => document.getElementById(id);
 
@@ -190,37 +338,84 @@ function render(payload) {
   badge.textContent = '● ' + s.overall.toUpperCase();
   badge.className = 'badge badge-' + s.overall;
   $('petSummary').textContent = s.summary;
+  document.body.classList.add('revealed');
+
+  /* ── feed the living atmosphere with the REAL readings ── */
+  const heart = payload.organs.heart;
+  ATMO.heartAlive = !!(heart && heart.ok);
+  if (ATMO.heartAlive) {
+    const chg = Number(heart.data.change24hPct) || 0;
+    ATMO.bpm = Math.max(42, Math.min(126, Math.round(50 + Math.abs(chg) * 9 + (s.scores.energy - 50) * 0.18)));
+    ATMO.heartText = `BTC $${Number(heart.data.priceUsd).toLocaleString('en-US')} · 24h ${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%`;
+  } else {
+    ATMO.heartText = '';
+  }
+  $('ecgLabel').innerHTML = ATMO.heartAlive
+    ? `♥ <b>${ATMO.bpm} BPM</b> — Pete's heartbeat, set by the market · ${escapeHtml(ATMO.heartText)}`
+    : '♥ flatline — the heart organ is silent. Pete will not fake a pulse.';
+
+  const b = s.scores.breathing;
+  if (typeof b === 'number') {
+    ATMO.breathHz = b >= 75 ? 0.21 : b >= 55 ? 0.29 : b >= 35 ? 0.44 : 0.62;
+    ATMO.breathDepth = b >= 75 ? 1 : b >= 55 ? 0.8 : b >= 35 ? 0.55 : 0.38;
+  }
+  const lungs = payload.organs.lungs;
+  if (lungs && lungs.ok && typeof lungs.data.aqiUs === 'number') {
+    const aqi = lungs.data.aqiUs;
+    ATMO.smoke = aqi <= 50 ? 0.05 : aqi <= 100 ? 0.17 : aqi <= 150 ? 0.36 : aqi <= 200 ? 0.58 : 0.85;
+  } else if (lungs && lungs.ok && typeof lungs.data.pm25 === 'number') {
+    const pm = lungs.data.pm25;
+    ATMO.smoke = pm <= 12 ? 0.05 : pm <= 35.4 ? 0.17 : pm <= 55.4 ? 0.36 : pm <= 150.4 ? 0.58 : 0.85;
+  } else {
+    ATMO.smoke = 0.03; // lungs silent: no invented smoke either
+  }
+  document.getElementById('scene').style.setProperty('--haze', ATMO.smoke.toFixed(2));
+  if (s.moodCondition) {
+    ATMO.sky = s.moodCondition;
+    document.body.dataset.sky = s.moodCondition;
+  }
 
   if (payload.home) {
     $('homeLabel').innerHTML = `🏠 Pete lives in <b>${escapeHtml(payload.home.name)}</b> — Borneo, the lungs of the world. His mood and his stitched lungs always read that one benchmark place, so every visitor sees the same Pete.`;
   }
   const scoreDefs = [
-    ['Health', s.scores.health, 'var(--green)'],
-    ['Energy', s.scores.energy, 'var(--amber)'],
-    ['Mood', s.scores.mood, 'var(--purple)'],
-    ['Breathing', s.scores.breathing, '#ff8fa8'],
-    ['Brain', s.scores.brain, '#ff9ec6'],
-    ['Fed', s.scores.fed, 'var(--teal)'],
-    ['Hunger', s.scores.hunger, 'var(--red)'],
+    ['Health', s.scores.health, '#3ddc97', null],
+    ['Energy', s.scores.energy, '#ffc46b', 'heart'],
+    ['Mood', s.scores.mood, '#b78cff', 'mood'],
+    ['Breathing', s.scores.breathing, '#ff8fa8', 'lungs'],
+    ['Brain', s.scores.brain, '#ff9ec6', 'brain'],
+    ['Fed', s.scores.fed, '#4fd8c8', 'stomach'],
+    ['Hunger', s.scores.hunger, '#e0657a', 'stomach'],
   ];
-  $('scores').innerHTML = scoreDefs.map(([label, v, c]) =>
-    v === null
-      ? `<div class="score-row"><span>${label}</span><div class="score-bar"></div><b>—</b></div>`
-      : `<div class="score-row"><span>${label}</span><div class="score-bar"><div class="score-fill" style="width:${v}%;background:${c}"></div></div><b>${v}</b></div>`).join('');
+  const CIRC = 2 * Math.PI * 26; // gauge ring circumference
+  $('scores').innerHTML = scoreDefs.map(([label, v, c, organKey]) => {
+    const silent = organKey && payload.organs[organKey] && !payload.organs[organKey].ok;
+    const shown = v === null ? '—' : String(v);
+    return `<figure class="gauge${silent ? ' silent' : ''}">
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <circle class="g-track" cx="32" cy="32" r="26"></circle>
+        <circle class="g-fill" cx="32" cy="32" r="26" style="color:${c};stroke:${c}" stroke-dasharray="${CIRC.toFixed(1)}" stroke-dashoffset="${CIRC.toFixed(1)}" data-target="${v === null ? CIRC.toFixed(1) : (CIRC * (1 - v / 100)).toFixed(1)}"></circle>
+        <text class="g-num" x="32" y="38" text-anchor="middle">${shown}</text>
+      </svg><figcaption>${label}</figcaption></figure>`;
+  }).join('');
+  // sweep the rings to their values on the next frame (CSS transition does the rest)
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    document.querySelectorAll('.g-fill').forEach((el) => { el.style.strokeDashoffset = el.dataset.target; });
+  }));
 
-  $('organGrid').innerHTML = ORGAN_META.map(([key, name, source]) => {
+  $('organGrid').innerHTML = ORGAN_META.map(([key, name, source], i) => {
     const o = key === 'voice' ? payload.voice : payload.organs[key];
     const deadCls = o.ok ? '' : ' dead';
     const body = o.ok
       ? `<div class="organ-reading">${key === 'voice' ? 'Lives in your browser — press “Make Pete speak”.' : readingText(key, o)}</div>`
       : `<div class="organ-error">✖ ${escapeHtml(o.error || 'no answer')}<br>This part is grey. Pete will not fake it.</div>`;
-    return `<div class="organ${deadCls}"><div class="organ-head"><span class="organ-name">${name}</span><span class="dot${o.ok ? '' : ' dead'}"></span></div>` +
+    return `<div class="organ${deadCls}" style="animation-delay:${(i * 80).toFixed(0)}ms"><div class="organ-head"><span class="organ-name">${name}</span><span class="jewel${o.ok ? '' : ' dead'}"></span></div>` +
       `<div class="organ-source">${source}</div>${body}` +
       `<div class="organ-meta">${o.ok ? 'last reading' : 'last attempt'} ${fmtTime(o.fetchedAt)}${o.cached ? ' · cached' : ''}</div></div>`;
   }).join('');
 
   $('diaryList').innerHTML = payload.diary && payload.diary.length
-    ? payload.diary.map((e) => `<div class="diary-entry ${e.source === 'template' ? 'template' : ''}">${escapeHtml(e.text)}<div class="diary-meta">${fmtTime(e.at)} · state: ${escapeHtml(e.overall)} · <span class="src-tag ${e.source === 'gemini' ? 'src-gemini' : 'src-template'}">${e.source === 'gemini' ? 'written by Gemini' : 'template (no Gemini)'}</span></div></div>`).join('')
+    ? payload.diary.map((e, i) => `<div class="diary-entry ${e.source === 'template' ? 'template' : ''}" style="animation-delay:${(i * 90).toFixed(0)}ms">${escapeHtml(e.text)}<div class="diary-meta">${fmtTime(e.at)} · state: ${escapeHtml(e.overall)} · <span class="src-tag ${e.source === 'gemini' ? 'src-gemini' : 'src-template'}">${e.source === 'gemini' ? 'written by Gemini' : 'template (no Gemini)'}</span></div></div>`).join('')
     : '<div class="diary-empty">No entries yet.</div>';
 }
 
@@ -314,21 +509,27 @@ async function compare({ lat, lon, place }) {
     const j = await res.json();
     const yL = j.you.lungs.data, pL = j.pete.lungs.data;
     const yM = j.you.mood.data, pM = j.pete.mood.data;
-    const fmt = (v, unit) => (v === null || v === undefined ? '—' : `${v}${unit || ''}`);
-    const diffCell = (d, invert) => {
-      if (d === null) return '—';
-      const worse = invert ? d < 0 : d > 0;
-      const cls = d === 0 ? '' : worse ? 'diff-up' : 'diff-down';
-      return `<span class="${cls}">${d > 0 ? '+' : ''}${d}</span>`;
-    };
-    box.innerHTML = `<table class="compare-table">
-      <tr><th></th><th>${escapeHtml(j.place)} (you)</th><th>Pete — ${escapeHtml(j.home.name)}</th><th>Difference</th></tr>
-      <tr><td>US AQI</td><td>${fmt(yL && yL.aqiUs)}</td><td>${fmt(pL && pL.aqiUs)}</td><td>${diffCell(j.difference.aqiUs)}</td></tr>
-      <tr><td>PM2.5 µg/m³</td><td>${fmt(yL && yL.pm25)}</td><td>${fmt(pL && pL.pm25)}</td><td>${diffCell(j.difference.pm25)}</td></tr>
-      <tr><td>Air condition</td><td>${yL ? escapeHtml(yL.condition) : 'no reading'}</td><td>${pL ? escapeHtml(pL.condition) : 'no reading'}</td><td></td></tr>
-      <tr><td>Weather</td><td>${yM ? `${escapeHtml(yM.condition)}, ${yM.temperatureC}°C` : 'no reading'}</td><td>${pM ? `${escapeHtml(pM.condition)}, ${pM.temperatureC}°C` : 'no reading'}</td><td>${diffCell(j.difference.temperatureC, true)}</td></tr>
-    </table>
-    <div class="hint">${escapeHtml(j.note)}</div>`;
+    const fmt = (v) => (v === null || v === undefined ? '—' : `${v}`);
+    const dAqi = j.difference.aqiUs;
+    const medalCls = dAqi === null || dAqi === 0 ? '' : dAqi > 0 ? 'diff-up' : 'diff-down';
+    const verdict = dAqi === null ? 'no verdict — a reading is missing'
+      : dAqi === 0 ? 'dead even — twin skies'
+      : dAqi > 0 ? 'your air hangs heavier than Pete\'s'
+      : 'your air is cleaner than Pete\'s';
+    const portrait = (place, L, M, cls) => `
+      <div class="duelist ${cls}">
+        <div class="duelist-place">${escapeHtml(place)}</div>
+        <div class="duel-aqi">${fmt(L && L.aqiUs)}</div>
+        <div class="duel-unit">US AQI</div>
+        <div class="duel-cond">${L ? escapeHtml(L.condition) + ' air' : 'no air reading'}</div>
+        <div class="duel-rows">PM2.5 ${fmt(L && L.pm25)} µg/m³ · PM10 ${fmt(L && L.pm10)} µg/m³<br>${M ? `${escapeHtml(M.condition)}, ${M.temperatureC}°C · wind ${M.windKmh} km/h` : 'no weather reading'}</div>
+      </div>`;
+    box.innerHTML = `<div class="duel">
+      ${portrait(j.place + ' — you', yL, yM, '')}
+      <div class="duel-medal"><span>Δ AQI</span><b class="${medalCls}">${dAqi === null ? '—' : (dAqi > 0 ? '+' : '') + dAqi}</b><small>${verdict}</small></div>
+      ${portrait('Pete — ' + j.home.name, pL, pM, 'pete')}
+    </div>
+    <div class="hint duel-note">${escapeHtml(j.note)}</div>`;
   } catch {
     box.innerHTML = '<div class="diary-empty">The comparison could not be read right now — the sky APIs did not answer.</div>';
   }
@@ -336,3 +537,5 @@ async function compare({ lat, lon, place }) {
 
 load();
 setInterval(() => load(), 120000);
+// The veil must never trap the page: lift it even if the first reading is slow.
+setTimeout(() => document.body.classList.add('revealed'), 2600);

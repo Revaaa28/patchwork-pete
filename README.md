@@ -25,6 +25,15 @@ Because home is a single benchmark, every visitor and judge sees the **same Pete
 | 🔊 Voice | mouth | Web Speech API | Runs entirely in the visitor's browser — Pete speaks his own status aloud |
 | 📓 Nervous system | diary | Gemini (optional) | Writes diary lines *from* the computed state. No key / failure → deterministic template lines, honestly labelled |
 
+## The presentation
+
+Pete is presented as a museum piece in a **gothic-luxury manor laboratory**: obsidian and velvet-black rooms, brass instruments and gold-thread stitches (his seams are literally sewn in gold), emerald jewel organ-lights, a serif specimen ledger, and a grand arched chamber under a spotlight. The luxury is alive, and — like everything about Pete — it is driven only by real readings:
+
+- **The smoke in his chamber is Borneo's measured air.** Its density follows the real US AQI at home: crystal-clear on clean days, thick drifting haze (and a coughing Pete) when the AQI climbs.
+- **A gold ECG line** under the stage beats at a rate derived from the real BTC 24h move; Pete's pixel heart pulses in sync, and falls honestly flat and grey if the heart organ dies.
+- **His chest breathes** at the rate and depth his breathing score dictates — slow and deep on clean air, fast and shallow in smoke.
+- **The room's light is Borneo's weather:** warm gold sun, cool rain gloom, and a flickering lamp in a storm.
+
 ## The law of the lab
 
 - **Deterministic state.** Scores (health, energy, mood, breathing, brain, fed, hunger) and the overall state (`thriving / ok / hungry / gloomy / smoky / limping`) are computed by one pure function — `src/state.js`. Same readings in, same Pete out. A dead lungs organ leaves breathing `null` — unknown, shown as "—", never a made-up number.

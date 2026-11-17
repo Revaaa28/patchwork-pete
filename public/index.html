@@ -5,62 +5,108 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Patchwork Pete — a pet sewn from live APIs</title>
 <meta name="description" content="Patchwork Pete is one shared virtual pet sewn from live, incompatible APIs. He lives in Palangka Raya, Borneo — the lungs of the world: CoinGecko is his heart, Borneo's weather is his face, Borneo's real air fills his stitched lungs, Wikipedia is his brain, GitHub commits are his food. When Borneo burns, Pete coughs.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧟</text></svg>">
 </head>
-<body>
+<body data-sky="partly-cloudy">
+<div class="veil" id="veil" aria-hidden="true">
+  <div class="veil-inner">
+    <div class="veil-mono">⚡</div>
+    <div class="veil-name">PATCHWORK&nbsp;PETE</div>
+    <div class="veil-sub">the manor laboratory is opening</div>
+  </div>
+</div>
 <div class="bg-glow"></div>
+
 <header class="topbar">
+  <div class="ornament"><span></span><i>◆</i><span></span></div>
   <div class="brand"><span class="brand-bolt">⚡</span> PATCHWORK PETE</div>
-  <div class="topbar-sub">one shared pet, sewn from live APIs · Kiroween 2026 · Frankenstein</div>
+  <div class="topbar-sub">One shared pet, sewn from live APIs · Kiroween 2026 · Frankenstein</div>
   <div id="overallBadge" class="badge badge-loading">waking Pete up…</div>
-  <div id="homeLabel" class="home-label">🏠 Pete lives in … — his mood and his lungs always read that one benchmark place, so every visitor sees the same Pete.</div>
+  <div id="homeLabel" class="home-label">Pete lives in … — his mood and his lungs always read that one benchmark place, so every visitor sees the same Pete.</div>
 </header>
 
 <main class="layout">
-  <section class="lab-card pet-card">
-    <div class="card-title">🧪 The Creature</div>
-    <canvas id="peteCanvas" width="360" height="420" aria-label="Pixel-art Patchwork Pete"></canvas>
-    <div id="petSummary" class="pet-summary">Stitching organs together…</div>
-    <div class="scores" id="scores"></div>
-    <div class="actions">
-      <button data-action="stomach">🍽️ Feed Pete</button>
-      <button data-action="brain">🧠 Teach Pete</button>
-      <button data-action="mood">🌦️ Check home weather</button>
-      <button data-action="lungs">🫁 Check home air</button>
-      <button data-action="heart">❤️ Check heart</button>
-      <button id="speakBtn" class="speak">🔊 Make Pete speak</button>
+  <!-- ══════════ THE GRAND STAGE ══════════ -->
+  <section class="panel stage-panel rise">
+    <div class="panel-head">
+      <h2 class="panel-title">The Creature</h2>
+      <div class="panel-sub">Specimen Nº 1 · sewn, not born · presented alive</div>
     </div>
-    <div class="hint">Feed = fresh GitHub commits · Teach = a new Wikipedia fact · Pete's voice runs in your browser (Web Speech API).</div>
+    <div class="stage">
+      <div class="scene" id="scene">
+        <div class="scene-sky"></div>
+        <div class="arch" aria-hidden="true"><div class="arch-mullion"></div></div>
+        <div class="spotlight" aria-hidden="true"></div>
+        <div class="scene-haze" aria-hidden="true"></div>
+        <canvas id="peteCanvas" width="360" height="420" aria-label="Pixel-art Patchwork Pete"></canvas>
+        <canvas id="fxCanvas" aria-hidden="true"></canvas>
+        <div class="scene-floor" aria-hidden="true"></div>
+        <div class="plaque" aria-hidden="true">✦ &nbsp;EXHIBIT Nº 1 — “PETE”&nbsp; ✦</div>
+      </div>
+      <div class="stage-side">
+        <p id="petSummary" class="pet-summary">Stitching organs together…</p>
+        <div class="ecg-wrap">
+          <canvas id="ecgCanvas" width="880" height="76" aria-hidden="true"></canvas>
+          <div class="ecg-label" id="ecgLabel">♥ awaiting the heart…</div>
+        </div>
+        <div class="scores" id="scores"></div>
+        <div class="actions">
+          <button data-action="stomach">Feed Pete</button>
+          <button data-action="brain">Teach Pete</button>
+          <button data-action="mood">Home Weather</button>
+          <button data-action="lungs">Home Air</button>
+          <button data-action="heart">His Heart</button>
+          <button id="speakBtn" class="speak">Make Pete Speak</button>
+        </div>
+        <div class="hint">Feed = fresh GitHub commits · Teach = a new Wikipedia fact · Pete's voice runs in your browser (Web Speech API). The gold thread is real: every stitch is a live API.</div>
+      </div>
+    </div>
   </section>
 
-  <section class="lab-card">
-    <div class="card-title">🗺️ Stitch Map — every organ, live</div>
+  <!-- ══════════ SPECIMEN LEDGER ══════════ -->
+  <section class="panel rise">
+    <div class="panel-head">
+      <h2 class="panel-title">The Specimen Ledger</h2>
+      <div class="panel-sub">Every organ, its provenance, its living state</div>
+    </div>
     <div id="organGrid" class="organ-grid"></div>
-    <div class="law">⚖️ <b>The law of the lab:</b> Pete's state is computed by deterministic code from raw organ readings — and only from his benchmark home's readings. If an API dies, that body part goes grey and Pete limps — he never fakes a reading.</div>
+    <div class="law"><b>The law of the house:</b> Pete's state is computed by deterministic code from raw organ readings — and only from his benchmark home's readings. If an API dies, that body part goes grey and Pete limps. He never fakes a reading.</div>
   </section>
 
-  <section class="lab-card compare-card">
-    <div class="card-title">🌍 Your Air vs Pete's Borneo Air</div>
-    <p class="compare-intro">Pete lives in Borneo and stays put — comparing never changes him. Pick your place and see your sky and air next to his Borneo sky and air.</p>
+  <!-- ══════════ DIARY ══════════ -->
+  <section class="panel rise">
+    <div class="panel-head">
+      <h2 class="panel-title">Pete's Diary</h2>
+      <div class="panel-sub">In his own words — or honestly labelled otherwise</div>
+    </div>
+    <div id="diaryList" class="diary-list"><div class="diary-empty">No entries yet — Pete is still waking up.</div></div>
+  </section>
+
+  <!-- ══════════ THE DUEL OF AIRS ══════════ -->
+  <section class="panel compare-panel rise">
+    <div class="panel-head">
+      <h2 class="panel-title">Your Air vs Pete's Borneo Air</h2>
+      <div class="panel-sub">A duel of skies — comparing never moves Pete</div>
+    </div>
+    <p class="compare-intro">Pete lives in Borneo and stays put. Choose your place and stand your sky beside his: two portraits of air, one verdict.</p>
     <div class="compare-controls">
-      <button id="geoBtn">📍 Use my location</button>
+      <button id="geoBtn">Use My Location</button>
       <span class="search-wrap">
         <input id="citySearch" type="text" placeholder="Search a city…" autocomplete="off">
         <div id="searchResults" class="search-results"></div>
       </span>
     </div>
     <div class="presets" id="presets"></div>
-    <div id="compareResult" class="compare-result"><div class="diary-empty">No comparison yet — choose a place above.</div></div>
-  </section>
-
-  <section class="lab-card diary-card">
-    <div class="card-title">📓 Pete's Diary</div>
-    <div id="diaryList" class="diary-list"><div class="diary-empty">No entries yet — Pete is still waking up.</div></div>
+    <div id="compareResult" class="compare-result"><div class="diary-empty">No duel yet — choose a place above.</div></div>
   </section>
 </main>
 
 <footer>
+  <div class="foot-rule"><span></span><i>◆</i><span></span></div>
   Heart: CoinGecko · Face: the benchmark home's weather (Open-Meteo) · Lungs: the benchmark home's air (Open-Meteo Air Quality; NASA FIRMS hotspots when configured) · Brain: Wikipedia · Stomach: GitHub @Revaaa28 · Voice: Web Speech API · Diary: Gemini when available, honest templates otherwise.
 </footer>
 <script src="/app.js"></script>
