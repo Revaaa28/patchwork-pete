@@ -93,7 +93,7 @@ async function getLungs({ force = false, fetchFn, location, firmsKey, retryDelay
       lon: loc.lon,
       timezone: typeof json.timezone === 'string' ? json.timezone : null,
       fireHotspots24h: null,
-      fireSource: 'NASA FIRMS not configured (set FIRMS_MAP_KEY to enable)',
+      fireSource: 'NASA FIRMS fire watch — not stitched into this exhibit yet',
     };
     data.condition = conditionForAir(data);
 
