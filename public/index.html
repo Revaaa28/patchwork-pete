@@ -4,7 +4,21 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Patchwork Pete — a pet sewn from live APIs</title>
-<meta name="description" content="Patchwork Pete is one shared virtual pet sewn from live, incompatible APIs. He lives in Borneo — the lungs of the world: CoinGecko is his heart, Borneo's weather is his face, Borneo's real air fills his stitched lungs, Wikipedia is his brain, GitHub commits are his food. When Borneo burns, Pete coughs.">
+<meta name="description" content="Patchwork Pete is one shared virtual pet sewn from live, incompatible APIs — who moves in with you. His face wears your weather, his stitched lungs breathe your air: CoinGecko is his heart, Wikipedia is his brain, GitHub commits are his food. Choose where he lives, and watch him live there.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Patchwork Pete">
+<meta property="og:title" content="Patchwork Pete — a pet sewn from live APIs, who moves in with you">
+<meta property="og:description" content="Patchwork Pete is one shared virtual pet sewn from live, incompatible APIs — who moves in with you. His face wears your weather, his stitched lungs breathe your air: CoinGecko is his heart, Wikipedia is his brain, GitHub commits are his food. Choose where he lives, and watch him live there.">
+<meta property="og:url" content="https://patchwork-pete.onrender.com/">
+<meta property="og:image" content="https://patchwork-pete.onrender.com/og-image.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Patchwork Pete — a pixel Frankenstein pet in a brass specimen arch under a gold PATCHWORK PETE masthead">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Patchwork Pete — a pet sewn from live APIs, who moves in with you">
+<meta name="twitter:description" content="Patchwork Pete is one shared virtual pet sewn from live, incompatible APIs — who moves in with you. His face wears your weather, his stitched lungs breathe your air: CoinGecko is his heart, Wikipedia is his brain, GitHub commits are his food. Choose where he lives, and watch him live there.">
+<meta name="twitter:image" content="https://patchwork-pete.onrender.com/og-image.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -24,9 +38,12 @@
 <header class="topbar">
   <div class="ornament"><span></span><i>◆</i><span></span></div>
   <div class="brand"><span class="brand-bolt">⚡</span> PATCHWORK PETE</div>
-  <div class="topbar-sub">One shared pet, sewn from live APIs · Kiroween 2026 · Frankenstein</div>
+  <div class="topbar-sub">One shared pet, sewn from live APIs — who moves in with you · Kiroween 2026 · Frankenstein</div>
   <div id="overallBadge" class="badge badge-loading">waking Pete up…</div>
-  <div id="homeLabel" class="home-label">Pete lives in … — his mood and his lungs always read that one benchmark place, so every visitor sees the same Pete.</div>
+  <div class="home-line">
+    <span id="homeLabel" class="home-label">Pete has no home yet — choose where he lives, and his face and lungs will wake up there.</span>
+    <button id="movePeteBtn" class="move-btn" type="button">Move Pete</button>
+  </div>
 </header>
 
 <main class="layout">
@@ -57,14 +74,32 @@
         <div class="actions">
           <button data-action="stomach">Feed Pete</button>
           <button data-action="brain">Teach Pete</button>
-          <button data-action="mood">Home Weather</button>
-          <button data-action="lungs">Home Air</button>
+          <button data-action="mood">His Weather</button>
+          <button data-action="lungs">His Air</button>
           <button data-action="heart">His Heart</button>
           <button id="speakBtn" class="speak">Make Pete Speak</button>
+          <button id="hauntBtn" class="speak" aria-pressed="false" title="Synthesized ambience — wind, a distant bell and creaks, generated live in your browser. No audio files.">Haunt the Lab</button>
         </div>
-        <div class="hint">Feed = fresh GitHub commits · Teach = a new Wikipedia fact · Pete's voice runs in your browser (Web Speech API). The gold thread is real: every stitch is a live API.</div>
+        <div class="hint">Feed = fresh GitHub commits · Teach = a new Wikipedia fact · Pete's voice runs in your browser (Web Speech API — deep, slow, and a little haunted). “Haunt the Lab” is synthesized ambience — WebAudio wind, bells and creaks generated live, no audio files. The gold thread is real: every stitch is a live API.</div>
       </div>
     </div>
+  </section>
+
+  <!-- ══════════ WHERE SHALL PETE LIVE? ══════════ -->
+  <section class="panel home-panel rise" id="homePicker">
+    <div class="panel-head">
+      <h2 class="panel-title">Where Shall Pete Live?</h2>
+      <div class="panel-sub">He moves in with you — his face wears your weather, his lungs breathe your air</div>
+    </div>
+    <p class="picker-intro" id="homeStatus">Pete has no home yet. Pick a place below and he moves in: his mood becomes that place's weather and his stitched lungs breathe that place's air. The choice is remembered in this browser — Pete will be living there when you return.</p>
+    <div class="picker-controls">
+      <button id="geoBtn">Use My Location</button>
+      <span class="search-wrap">
+        <input id="citySearch" type="text" placeholder="Search a country or city…" autocomplete="off">
+        <div id="searchResults" class="search-results"></div>
+      </span>
+    </div>
+    <div class="presets" id="presets"></div>
   </section>
 
   <!-- ══════════ SPECIMEN LEDGER ══════════ -->
@@ -74,7 +109,7 @@
       <div class="panel-sub">Every organ, its provenance, its living state</div>
     </div>
     <div id="organGrid" class="organ-grid"></div>
-    <div class="law"><b>The law of the house:</b> Pete's state is computed by deterministic code from raw organ readings — and only from his benchmark home's readings. If an API dies, that body part goes grey and Pete limps. He never fakes a reading.</div>
+    <div class="law"><b>The law of the house:</b> Pete's state is computed by deterministic code from raw organ readings — and only from the readings of the place he currently lives, the home you chose for him. If an API dies, that body part goes grey and Pete limps. He never fakes a reading.</div>
   </section>
 
   <!-- ══════════ DIARY ══════════ -->
@@ -86,29 +121,13 @@
     <div id="diaryList" class="diary-list"><div class="diary-empty">No entries yet — Pete is still waking up.</div></div>
   </section>
 
-  <!-- ══════════ THE DUEL OF AIRS ══════════ -->
-  <section class="panel compare-panel rise">
-    <div class="panel-head">
-      <h2 class="panel-title">Your Air vs Pete's Borneo Air</h2>
-      <div class="panel-sub">A duel of skies — comparing never moves Pete</div>
-    </div>
-    <p class="compare-intro">Pete lives in Borneo and stays put. Choose your place and stand your sky beside his: two portraits of air, one verdict.</p>
-    <div class="compare-controls">
-      <button id="geoBtn">Use My Location</button>
-      <span class="search-wrap">
-        <input id="citySearch" type="text" placeholder="Search a city…" autocomplete="off">
-        <div id="searchResults" class="search-results"></div>
-      </span>
-    </div>
-    <div class="presets" id="presets"></div>
-    <div id="compareResult" class="compare-result"><div class="diary-empty">No duel yet — choose a place above.</div></div>
-  </section>
 </main>
 
 <footer>
   <div class="foot-rule"><span></span><i>◆</i><span></span></div>
-  Heart: CoinGecko · Face: the benchmark home's weather (Open-Meteo) · Lungs: the benchmark home's air (Open-Meteo Air Quality; NASA FIRMS hotspots when configured) · Brain: Wikipedia · Stomach: GitHub @Revaaa28 · Voice: Web Speech API · Diary: Gemini when available, honest templates otherwise.
+  Heart: CoinGecko · Face: the weather where Pete lives (Open-Meteo) · Lungs: the air where Pete lives (Open-Meteo Air Quality; NASA FIRMS hotspots when configured) · Brain: Wikipedia · Stomach: GitHub @Revaaa28 · Voice: Web Speech API · Diary: Gemini when available, honest templates otherwise.
 </footer>
+<script src="/phrases.js"></script>
 <script src="/app.js"></script>
 </body>
 </html>

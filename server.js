@@ -10,7 +10,7 @@ const { getStomach } = require('./src/organs/stomach');
 const { getLungs } = require('./src/organs/lungs');
 const { getDiary } = require('./src/organs/diary');
 const { computeState } = require('./src/state');
-const { HOME, homeLocation, normalizeLocation } = require('./src/location');
+const { normalizeLocation } = require('./src/location');
 const { fetchJson } = require('./src/fetchJson');
 
 const app = express();
@@ -19,36 +19,38 @@ const PORT = process.env.PORT || 4177;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const ORGAN_GETTERS = {
-  heart: (o) => getHeart(o),
-  mood: (o) => getMood({ ...o, location: homeLocation() }),
-  brain: (o) => getBrain(o),
-  stomach: (o) => getStomach(o),
-  lungs: (o) => getLungs({ ...o, location: homeLocation() }),
-};
+// Pete has NO fixed home (concept change, Rev 2026-11-17): he moves in
+// with each visitor. The visitor's browser remembers the chosen place
+// (localStorage) and sends it as ?lat&lon&place on every state request.
+// No coordinates -> no home -> mood and lungs honestly await a choice.
+function locationFromRequest(req) {
+  const q = req.query || {};
+  return normalizeLocation({ lat: q.lat, lon: q.lon, place: q.place });
+}
 
-// Pete's official readings: location-bound organs ALWAYS read his one
-// benchmark home. Nothing a visitor sends can move Pete.
-async function collectReadings(force = {}) {
-  const home = homeLocation();
-  const [heart, mood, brain, stomach, lungs] = await Promise.all([
+async function collectReadings(force = {}, loc = null) {
+  const [heart, mood, brain, lungs] = await Promise.all([
     getHeart({ force: !!force.heart }),
-    getMood({ force: !!force.mood, location: home }),
+    getMood({ force: !!force.mood, location: loc }),
     getBrain({ force: !!force.brain }),
-    getStomach({ force: !!force.stomach }),
-    getLungs({ force: !!force.lungs, location: home }),
+    getLungs({ force: !!force.lungs, location: loc }),
   ]);
+  // The stomach counts "today" in the chosen home's timezone (reported by
+  // Open-Meteo with its readings); no home yet -> UTC.
+  const tz = (mood.data && mood.data.timezone) || (lungs.data && lungs.data.timezone) || 'UTC';
+  const stomach = await getStomach({ force: !!force.stomach, timezone: tz });
   return { heart, mood, brain, stomach, lungs };
 }
 
-async function fullState(force = {}) {
-  const readings = await collectReadings(force);
+async function fullState(force = {}, loc = null) {
+  const readings = await collectReadings(force, loc);
   const state = computeState(readings);
   const diary = await getDiary(state, readings, { force: !!force.diary });
   return {
     pet: 'Patchwork Pete',
     generatedAt: new Date().toISOString(),
-    home: { name: HOME.name, lat: HOME.lat, lon: HOME.lon },
+    home: loc ? { name: loc.place, lat: loc.lat, lon: loc.lon } : null,
+    awaitingHome: !loc,
     organs: readings,
     voice: {
       organ: 'voice',
@@ -65,79 +67,64 @@ async function fullState(force = {}) {
 
 app.get('/api/state', async (req, res) => {
   try {
-    res.json(await fullState());
+    res.json(await fullState({}, locationFromRequest(req)));
   } catch (err) {
     res.status(500).json({ error: String(err && err.message ? err.message : err) });
   }
 });
 
 // Action buttons: feed (stomach), teach (brain), weather (mood), heart, air (lungs).
+// The visitor's chosen home rides along as query params, same as /api/state.
+const ORGANS = ['heart', 'mood', 'brain', 'stomach', 'lungs'];
 app.post('/api/refresh/:organ', async (req, res) => {
   const organ = req.params.organ;
-  if (!ORGAN_GETTERS[organ]) return res.status(404).json({ error: `Unknown organ: ${organ}` });
+  if (!ORGANS.includes(organ)) return res.status(404).json({ error: `Unknown organ: ${organ}` });
   try {
-    res.json(await fullState({ [organ]: true, diary: organ === 'brain' }));
+    res.json(await fullState({ [organ]: true, diary: organ === 'brain' }, locationFromRequest(req)));
   } catch (err) {
     res.status(500).json({ error: String(err && err.message ? err.message : err) });
   }
 });
 
-// COMPARISON ONLY — "Your air vs Pete's air".
-// Reads weather + air for a visitor-supplied place and sets them beside
-// Pete's benchmark readings. This NEVER touches Pete's state or diary.
-app.get('/api/compare', async (req, res) => {
-  try {
-    const loc = normalizeLocation({ lat: req.query.lat, lon: req.query.lon, place: req.query.place });
-    const [yourMood, yourLungs, home] = await Promise.all([
-      getMood({ location: loc }),
-      getLungs({ location: loc }),
-      fullState(),
-    ]);
-    const pete = { mood: home.organs.mood, lungs: home.organs.lungs };
-    const num = (v) => (typeof v === 'number' ? v : null);
-    const diff = (a, b) => (a === null || b === null ? null : Math.round((a - b) * 10) / 10);
-    res.json({
-      place: loc.place,
-      isHome: loc.isHome,
-      home: { name: HOME.name },
-      you: { mood: yourMood, lungs: yourLungs },
-      pete,
-      difference: {
-        aqiUs: diff(num(yourLungs.data && yourLungs.data.aqiUs), num(pete.lungs.data && pete.lungs.data.aqiUs)),
-        pm25: diff(num(yourLungs.data && yourLungs.data.pm25), num(pete.lungs.data && pete.lungs.data.pm25)),
-        temperatureC: diff(num(yourMood.data && yourMood.data.temperatureC), num(pete.mood.data && pete.mood.data.temperatureC)),
-      },
-      note: 'Comparison only — Pete\'s official state is computed solely from his benchmark home and does not change with your location.',
-    });
-  } catch (err) {
-    res.status(500).json({ error: String(err && err.message ? err.message : err) });
-  }
-});
+// City search for the home picker (Open-Meteo Geocoding, keyless).
+// Results show "Name, Country" — picking one makes it Pete's home.
+function parseGeocodeResults(json) {
+  const list = json && Array.isArray(json.results) ? json.results : [];
+  return list.map((r) => ({
+    name: r.name,
+    admin1: r.admin1 || '',
+    country: r.country || '',
+    place: [r.name, r.country].filter(Boolean).join(', '),
+    lat: r.latitude,
+    lon: r.longitude,
+  }));
+}
 
-// City search for the comparison panel (Open-Meteo Geocoding, keyless).
 app.get('/api/geocode', async (req, res) => {
   const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
   if (q.length < 2) return res.json({ results: [] });
   try {
     const json = await fetchJson(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=6&language=en&format=json`);
-    const results = (json.results || []).map((r) => ({
-      name: r.name,
-      admin1: r.admin1 || '',
-      country: r.country || '',
-      place: [r.name, r.admin1, r.country].filter(Boolean).join(', '),
-      lat: r.latitude,
-      lon: r.longitude,
-    }));
-    res.json({ results });
+    res.json({ results: parseGeocodeResults(json) });
   } catch (err) {
     res.status(502).json({ error: String(err && err.message ? err.message : err), results: [] });
   }
 });
 
-app.get('/healthz', (req, res) => res.json({ ok: true, service: 'patchwork-pete', home: HOME.name }));
+app.get('/healthz', (req, res) => res.json({ ok: true, service: 'patchwork-pete' }));
 
 if (require.main === module) {
-  app.listen(PORT, () => console.log(`Patchwork Pete is alive on http://localhost:${PORT} — home: ${HOME.name}`));
+  app.listen(PORT, () => {
+    console.log(`Patchwork Pete is alive on http://localhost:${PORT} — he moves in with each visitor; no fixed home`);
+    // Warm-up: seed the location-free organs (heart, brain, stomach) and
+    // their last-goods — what stale-while-error serves later — as early
+    // as possible, so a fresh boot (e.g. a Render cold start) does not
+    // meet its first judge with organs that never had a chance to answer.
+    // Mood and lungs cannot warm up: they wait for a visitor to choose
+    // where Pete lives. Fire-and-forget; a failed warm-up changes
+    // nothing (organs stay honestly dead until a read succeeds).
+    fullState().catch(() => {});
+  });
 }
 
-module.exports = { app, fullState, computeState };
+module.exports = { app, fullState, computeState, parseGeocodeResults };

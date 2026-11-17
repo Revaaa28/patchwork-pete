@@ -9,9 +9,10 @@ These rules bind every change to Patchwork Pete, human- or agent-written.
 4. **Models narrate; code decides.** A language model (Gemini) may write diary lines *from* the computed state. It must never set, adjust, or override a score, a state, or an organ reading. Diary output is always labelled with its true source (`gemini` or `template`).
 5. **Failures are shown, not hidden.** The UI must render dead organs as dead (grey part, red stitch-map card, the real error text). Never catch-and-substitute in the UI either.
 
-## One home, one Pete (benchmark rule)
-- Pete lives in ONE benchmark home, configured only in `src/location.js` (env `PETE_HOME_NAME` / `PETE_HOME_LAT` / `PETE_HOME_LON`; default Borneo — the "lungs of the world" framing). His official mood and breathing come only from home's weather and air (standard US AQI / PM2.5 bands).
-- Visitor locations are comparison-only ("Your Air vs Pete's Borneo Air", `/api/compare`). They must never feed Pete's state, scores, or diary, and copy must never present a visitor's or a default place's air as Pete's.
+## Pete moves in with the visitor (home rule — changed by Rev 2026-11-17)
+- Pete has NO fixed home and there is NO default place: `src/location.js` only validates visitor-supplied locations and builds cache keys. Each visitor chooses where Pete lives (geocoding search, browser geolocation, or preset capitals; persisted in localStorage), and his mood and breathing come only from THAT place's weather and air (standard US AQI / PM2.5 bands).
+- Before a choice, mood and lungs are `awaiting` — not dead, not zero, never silently filled by a default city. Copy must never present a place Pete does not live as his home.
+- The stomach's "today" is the chosen home's local day (timezone from the Open-Meteo readings; UTC while homeless).
 - The lungs organ breathes home air via Open-Meteo Air Quality; NASA FIRMS hotspots are counted only when `FIRMS_MAP_KEY` is configured — otherwise the field is null and labelled as not configured.
 
 ## Engineering rules

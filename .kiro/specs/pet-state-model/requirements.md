@@ -43,11 +43,19 @@ Patchwork Pete's visible state must be a pure, deterministic function of his org
 #### Acceptance criteria
 1. Energy SHALL increase with BTC's 24h change and decrease when it falls; a −9% day SHALL yield energy ≤ 10 and a +4% day SHALL yield energy > 70.
 
-### Requirement 6: Breathing from the benchmark air
-**User story:** As a visitor, I want Pete's breathing to reflect the real air of his Borneo home, so that haze season is something I can watch him live through.
+### Requirement 6: Breathing from the home air
+**User story:** As a visitor, I want Pete's breathing to reflect the real air of the place I chose for him to live, so that haze season — wherever he lives — is something I can watch him live through.
 
 #### Acceptance criteria
 1. Breathing SHALL be derived from the lungs reading on the standard US AQI scale (PM2.5 bands as fallback): clean home air SHALL yield breathing ≥ 85.
 2. WHEN the home air condition is `haze` or `severe-haze` THEN the overall state SHALL be `smoky` (unless limping), the face SHALL be `coughing`, and breathing SHALL be ≤ 30 at AQI ≈ 178.
 3. WHEN the lungs organ is dead THEN breathing SHALL be `null` (unknown — displayed as "—"), the lungs part SHALL be grey, and the overall state SHALL be `limping`. Breathing SHALL never be replaced with an invented number.
-4. Visitor-location readings SHALL NOT be inputs to this engine's official state; the engine only ever receives the benchmark home's readings from the server.
+4. The engine SHALL only ever receive readings for the ONE place the visitor chose as Pete's home (or awaiting readings when none was chosen); there is no default or benchmark place anywhere in the system.
+
+### Requirement 7: Awaiting a home
+**User story:** As a first-time visitor, I want Pete to wait honestly for a home instead of secretly living somewhere I never chose.
+
+#### Acceptance criteria
+1. WHEN mood and lungs readings carry `awaiting:true` (no home chosen) THEN the overall state SHALL be `awaiting-home`, the face SHALL be `waiting`, and mood and breathing scores SHALL be `null` (excluded from health) — never zero.
+2. Awaiting organs SHALL NOT appear in `deadOrgans`, SHALL NOT set `limping`, and their parts SHALL NOT be grey.
+3. WHEN a home is chosen THEN `homeName` SHALL carry that place's name and the summary and diary SHALL reference it ("Pete lives in …").

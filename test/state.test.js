@@ -9,10 +9,10 @@ const dead = (organ) => ({ organ, source: 'test', ok: false, data: null, error: 
 
 const healthy = () => ({
   heart: ok('heart', { priceUsd: 65000, change24hPct: 4.2 }),
-  mood: ok('mood', { weatherCode: 0, condition: 'clear', temperatureC: 31, windKmh: 6, location: 'Borneo' }),
+  mood: ok('mood', { weatherCode: 0, condition: 'clear', temperatureC: 31, windKmh: 6, location: 'New Delhi, India' }),
   brain: ok('brain', { currentFact: { title: 'Octopus' }, memory: [{ title: 'Octopus' }, { title: 'Moon' }, { title: 'Tea' }] }),
   stomach: ok('stomach', { commitsToday: 4, pushesToday: 2, lastPushAt: new Date().toISOString(), user: 'Revaaa28' }),
-  lungs: ok('lungs', { pm25: 8.2, pm10: 12, aqiUs: 30, aqiEu: 18, condition: 'clean', location: 'Borneo' }),
+  lungs: ok('lungs', { pm25: 8.2, pm10: 12, aqiUs: 30, aqiEu: 18, condition: 'clean', location: 'New Delhi, India' }),
 });
 
 test('all organs healthy -> thriving, no grey parts, not limping', () => {
@@ -25,6 +25,34 @@ test('all organs healthy -> thriving, no grey parts, not limping', () => {
   assert.ok(s.scores.health >= 78, `health ${s.scores.health}`);
   assert.ok(s.scores.energy > 70);
   assert.equal(s.scores.hunger, 100 - s.scores.fed);
+});
+
+test('no home chosen -> awaiting-home: mood/lungs unknown, not dead, not zero', () => {
+  const r = healthy();
+  const awaiting = (organ) => ({ organ, source: 'test', ok: false, awaiting: true, data: null, error: null, fetchedAt: new Date().toISOString() });
+  r.mood = awaiting('mood');
+  r.lungs = awaiting('lungs');
+  const s = computeState(r);
+  assert.equal(s.overall, 'awaiting-home');
+  assert.equal(s.awaitingHome, true);
+  assert.deepEqual(s.awaitingOrgans, ['mood', 'lungs']);
+  assert.deepEqual(s.deadOrgans, []); // awaiting is NOT dead
+  assert.equal(s.limping, false);
+  assert.deepEqual(s.greyParts, []); // nothing greys out while waiting
+  assert.equal(s.face, 'waiting');
+  assert.equal(s.scores.mood, null); // unknown — never a fake zero
+  assert.equal(s.scores.breathing, null);
+  assert.equal(s.homeName, null);
+  // health is computed from the organs that DO live (heart/brain/stomach)
+  assert.ok(s.scores.health > 0, `health ${s.scores.health}`);
+  assert.match(s.summary, /no home yet/i);
+});
+
+test('with a chosen home -> full state named after that place', () => {
+  const s = computeState(healthy());
+  assert.equal(s.homeName, 'New Delhi, India');
+  assert.equal(s.awaitingHome, false);
+  assert.match(s.summary, /New Delhi/);
 });
 
 test('one organ dead -> that part greys out and Pete limps', () => {
@@ -50,7 +78,7 @@ test('GitHub zero commits today -> hungry', () => {
 
 test('storm weather -> scared face and gloomy state', () => {
   const r = healthy();
-  r.mood = ok('mood', { weatherCode: 95, condition: 'storm', temperatureC: 26, windKmh: 40, location: 'Borneo' });
+  r.mood = ok('mood', { weatherCode: 95, condition: 'storm', temperatureC: 26, windKmh: 40, location: 'New Delhi, India' });
   const s = computeState(r);
   assert.equal(s.face, 'scared');
   assert.equal(s.overall, 'gloomy');
@@ -65,13 +93,13 @@ test('deterministic: same readings in, same state out', () => {
 
 test('rain -> gloomy even when fed', () => {
   const r = healthy();
-  r.mood = ok('mood', { weatherCode: 63, condition: 'rain', temperatureC: 27, windKmh: 9, location: 'Borneo' });
+  r.mood = ok('mood', { weatherCode: 63, condition: 'rain', temperatureC: 27, windKmh: 9, location: 'New Delhi, India' });
   const s = computeState(r);
   assert.equal(s.overall, 'gloomy');
   assert.equal(s.face, 'gloomy');
 });
 
-test('clean Borneo air -> breathing easy, no smoke', () => {
+test('clean air at home -> breathing easy, no smoke', () => {
   const s = computeState(healthy());
   assert.ok(s.scores.breathing >= 85, `breathing ${s.scores.breathing}`);
   assert.equal(s.smoky, false);
@@ -80,7 +108,7 @@ test('clean Borneo air -> breathing easy, no smoke', () => {
 
 test('haze-level PM2.5 -> Pete coughs, overall smoky', () => {
   const r = healthy();
-  r.lungs = ok('lungs', { pm25: 132, pm10: 190, aqiUs: 178, aqiEu: 150, condition: 'haze', location: 'Borneo' });
+  r.lungs = ok('lungs', { pm25: 132, pm10: 190, aqiUs: 178, aqiEu: 150, condition: 'haze', location: 'New Delhi, India' });
   const s = computeState(r);
   assert.equal(s.overall, 'smoky');
   assert.equal(s.smoky, true);

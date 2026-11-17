@@ -11,8 +11,8 @@ const URL = 'https://en.wikipedia.org/api/rest_v1/page/random/summary';
 const MEMORY_SIZE = 5;
 const memory = []; // newest first: { title, extract, url, learnedAt }
 
-async function fetchFact(fetchFn) {
-  const json = await fetchJson(URL, { fetchFn });
+async function fetchFact(fetchFn, opts = {}) {
+  const json = await fetchJson(URL, { fetchFn, retryDelays: opts.retryDelays, sleep: opts.sleep });
   if (!json || !json.title) throw new Error('Unexpected Wikipedia payload shape');
   const extract = typeof json.extract === 'string' ? json.extract : '';
   return {
@@ -23,12 +23,12 @@ async function fetchFact(fetchFn) {
   };
 }
 
-async function getBrain({ force = false, fetchFn } = {}) {
+async function getBrain({ force = false, fetchFn, retryDelays, sleep } = {}) {
   const fetchedAt = new Date().toISOString();
   let fetchedFresh = false;
   try {
     if (force || memory.length === 0) {
-      const fact = await fetchFact(fetchFn);
+      const fact = await fetchFact(fetchFn, { retryDelays, sleep });
       fetchedFresh = true;
       // Don't memorise the exact same article twice in a row.
       if (!memory[0] || memory[0].title !== fact.title) {

@@ -17,9 +17,10 @@ const GREY_D = '#454b58';
 /* ── Living atmosphere ─────────────────────────────────────
    Every effect below is DRIVEN BY PETE'S REAL READINGS, set in
    render() from the payload. Nothing here invents data: the smoke
-   is Borneo's measured AQI, the ECG rate is derived from the real
-   BTC 24h move, the breathing rate/depth from the breathing
-   score, the scene light from the real home weather condition. */
+   is the measured AQI of the place Pete lives, the ECG rate is
+   derived from the real BTC 24h move, the breathing rate/depth
+   from the breathing score, the scene light from the real weather
+   condition where he lives. */
 const ATMO = {
   bpm: 60,            // heartbeats per minute (from BTC move + energy)
   heartAlive: false,
@@ -60,12 +61,13 @@ function drawPete(now) {
   const s = current && current.state;
   const organs = current && current.organs;
   const dead = (k) => !organs || !organs[k] || !organs[k].ok;
+  const awaiting = (k) => !!(organs && organs[k] && organs[k].awaiting);
   const limping = s ? s.limping : false;
   const smoky = s ? s.smoky : false;
   const bob = limping ? Math.round(Math.sin(t * 3) * 0.6) : Math.round(Math.sin(t * 1.6) * 1);
   const lean = limping ? Math.sin(t * 3) * 0.05 : 0;
   // Breathing: the whole chest swells at the rate/depth the real
-  // breathing score dictates — slow & deep when Borneo's air is clean,
+  // breathing score dictates — slow & deep when the home air is clean,
   // fast & shallow when it is not.
   const breathPhase = Math.sin(2 * Math.PI * ATMO.breathHz * t);
   // Cough: short violent bursts, only while the home air is hazy.
@@ -104,9 +106,11 @@ function drawPete(now) {
   stitch(12, 24, 7, 1);
 
   // ---- lungs: two panels flanking the heart; pink when the home air is
-  // clean, sliding to grey-brown as smoke thickens, plain grey when dead ----
+  // clean, sliding to grey-brown as smoke thickens, plain grey when dead,
+  // dim brass while Pete still awaits a home (unlit, not broken) ----
   const breathing = s ? s.scores.breathing : null;
-  const lungC = dead('lungs') ? GREY
+  const lungC = awaiting('lungs') ? '#8a7a52'
+    : dead('lungs') ? GREY
     : breathing === null ? GREY
     : breathing >= 75 ? '#ff8fa8'
     : breathing >= 55 ? '#e58aa0'
@@ -151,9 +155,16 @@ function drawPete(now) {
   // ---- face (driven by the mood organ) ----
   const face = s ? s.face : 'neutral';
   const eye = '#14161c';
-  if (dead('mood')) {
+  if (dead('mood') && !awaiting('mood')) {
     px(11, 10, 2, 2, GREY_D); px(18, 10, 2, 2, GREY_D);
     px(13, 14, 5, 1, GREY_D);
+  } else if (face === 'waiting') {
+    // No home yet: calm dot eyes, a flat patient mouth, and a small
+    // floating question mark — he is waiting to be housed, not broken.
+    px(12, 10, 2, 2, eye); px(18, 10, 2, 2, eye);
+    px(13, 14, 5, 1, eye);
+    px(24, 2, 2, 1, '#d8b45a'); px(26, 3, 1, 1, '#d8b45a');
+    px(25, 4, 1, 1, '#d8b45a'); px(25, 6, 1, 1, '#d8b45a');
   } else if (face === 'scared') {
     px(11, 9, 3, 4, '#ffffff'); px(18, 9, 3, 4, '#ffffff');
     px(12, 10, 1, 2, eye); px(19, 10, 1, 2, eye);
@@ -180,12 +191,12 @@ function drawPete(now) {
 }
 requestAnimationFrame(drawPete);
 
-/* ── Atmosphere canvas: gold dust, embers, and Borneo smoke ──
+/* ── Atmosphere canvas: gold dust, embers, and home smoke ──
    One transparent canvas over the chamber. Dust & embers are the
    manor's air; the SMOKE is data — its density is ATMO.smoke,
-   derived from Pete's real home US AQI. Clean air: you can barely
-   see it. Haze: thick drifts roll across the glass and Pete coughs
-   behind them (his cough lives in drawPete). */
+   derived from the real US AQI where Pete lives. Clean air: you
+   can barely see it. Haze: thick drifts roll across the glass and
+   Pete coughs behind them (his cough lives in drawPete). */
 const fx = document.getElementById('fxCanvas');
 const fctx = fx.getContext('2d');
 const scene = document.getElementById('scene');
@@ -313,7 +324,7 @@ function readingText(key, o) {
   switch (key) {
     case 'heart': return `BTC <b>$${Number(d.priceUsd).toLocaleString('en-US')}</b> · 24h ${d.change24hPct >= 0 ? '+' : ''}${Number(d.change24hPct).toFixed(2)}%`;
     case 'mood': return `<b>${d.condition}</b> over ${escapeHtml(d.location)} · ${d.temperatureC}°C · wind ${d.windKmh} km/h`;
-    case 'lungs': return `Air: <b>${d.condition}</b> · PM2.5 <b>${d.pm25}</b> µg/m³ · PM10 ${d.pm10} · US AQI <b>${d.aqiUs}</b>${typeof d.fireHotspots24h === 'number' ? `<br>🔥 ${d.fireHotspots24h} fire hotspot(s) near home in 24h (NASA FIRMS)` : `<br><span style="color:var(--dim)">🔥 ${escapeHtml(d.fireSource || '')}</span>`}`;
+    case 'lungs': return `Air: <b>${d.condition}</b> · PM2.5 <b>${d.pm25}</b> µg/m³ · PM10 ${d.pm10} · US AQI <b>${d.aqiUs}</b>${typeof d.fireHotspots24h === 'number' ? `<br>🔥 ${d.fireHotspots24h} fire hotspot(s) near his home in 24h (NASA FIRMS)` : `<br><span style="color:var(--dim)">🔥 ${escapeHtml(d.fireSource || '')}</span>`}`;
     case 'brain': return d.currentFact ? `Knows: <a href="${d.currentFact.url || '#'}" target="_blank" rel="noopener">${escapeHtml(d.currentFact.title)}</a><br><span style="color:var(--dim)">${escapeHtml((d.currentFact.extract || '').slice(0, 150))}…</span>` : 'Brain is empty.';
     case 'stomach': return `<b>${d.commitsToday}</b> commit(s) eaten today in ${d.pushesToday} push(es)${d.lastPushAt ? ' · last bite ' + fmtTime(d.lastPushAt) : ''}`;
     default: return '';
@@ -324,8 +335,8 @@ function escapeHtml(s) {
 }
 const ORGAN_META = [
   ['heart', '❤️ Heart', 'CoinGecko public API — BTC/USD'],
-  ['mood', '🌦️ Face / Mood', 'Open-Meteo weather — Pete\'s home'],
-  ['lungs', '🫁 Lungs', 'Open-Meteo Air Quality — Pete\'s home'],
+  ['mood', '🌦️ Face / Mood', 'Open-Meteo weather — where Pete lives'],
+  ['lungs', '🫁 Lungs', 'Open-Meteo Air Quality — where Pete lives'],
   ['brain', '🧠 Brain', 'Wikipedia — random article'],
   ['stomach', '🍽️ Stomach', 'GitHub commits — @Revaaa28'],
   ['voice', '🔊 Voice', 'Web Speech API — your browser'],
@@ -376,7 +387,11 @@ function render(payload) {
   }
 
   if (payload.home) {
-    $('homeLabel').innerHTML = `🏠 Pete lives in <b>${escapeHtml(payload.home.name)}</b> — Borneo, the lungs of the world. His mood and his stitched lungs always read that one benchmark place, so every visitor sees the same Pete.`;
+    $('homeLabel').innerHTML = `🏠 Pete lives in <b>${escapeHtml(payload.home.name)}</b> — his face wears its weather and his stitched lungs breathe its air.`;
+    $('homeStatus').innerHTML = `Pete currently lives in <b>${escapeHtml(payload.home.name)}</b>. Pick another place any time — he will pack his stitches and move in there instead.`;
+  } else {
+    $('homeLabel').textContent = 'Pete has no home yet — choose where he lives, and his face and lungs will wake up there.';
+    $('homeStatus').textContent = 'Pete has no home yet. Pick a place below and he moves in: his mood becomes that place\'s weather and his stitched lungs breathe that place\'s air. The choice is remembered in this browser — Pete will be living there when you return.';
   }
   const scoreDefs = [
     ['Health', s.scores.health, '#3ddc97', null],
@@ -389,7 +404,10 @@ function render(payload) {
   ];
   const CIRC = 2 * Math.PI * 26; // gauge ring circumference
   $('scores').innerHTML = scoreDefs.map(([label, v, c, organKey]) => {
-    const silent = organKey && payload.organs[organKey] && !payload.organs[organKey].ok;
+    // A gauge goes silent only for a DEAD organ — an organ awaiting a
+    // home shows "—" but keeps its colour: unknown, not broken.
+    const organ = organKey && payload.organs[organKey];
+    const silent = organ && !organ.ok && !organ.awaiting;
     const shown = v === null ? '—' : String(v);
     return `<figure class="gauge${silent ? ' silent' : ''}">
       <svg viewBox="0 0 64 64" aria-hidden="true">
@@ -405,13 +423,23 @@ function render(payload) {
 
   $('organGrid').innerHTML = ORGAN_META.map(([key, name, source], i) => {
     const o = key === 'voice' ? payload.voice : payload.organs[key];
-    const deadCls = o.ok ? '' : ' dead';
+    const deadCls = o.ok ? '' : o.awaiting ? ' awaiting' : ' dead';
+    const staleTag = o.stale ? '<span class="stale-tag">stale</span>' : '';
     const body = o.ok
       ? `<div class="organ-reading">${key === 'voice' ? 'Lives in your browser — press “Make Pete speak”.' : readingText(key, o)}</div>`
-      : `<div class="organ-error">✖ ${escapeHtml(o.error || 'no answer')}<br>This part is grey. Pete will not fake it.</div>`;
-    return `<div class="organ${deadCls}" style="animation-delay:${(i * 80).toFixed(0)}ms"><div class="organ-head"><span class="organ-name">${name}</span><span class="jewel${o.ok ? '' : ' dead'}"></span></div>` +
+      : o.awaiting
+        ? `<div class="organ-awaiting">⌂ No home yet — choose where Pete lives below and this organ wakes up. Nothing is faked in the meantime.</div>`
+        : `<div class="organ-error">✖ ${escapeHtml(o.error || 'no answer')}<br>This part is grey. Pete will not fake it.</div>`;
+    // A stale reading keeps its ORIGINAL read time and says so — it is a
+    // real past reading on loan, never a fresh one in disguise.
+    const meta = o.awaiting
+      ? 'waiting for a home'
+      : o.stale
+        ? `stale · read at ${fmtTime(o.fetchedAt)} · the live API did not answer just now`
+        : `${o.ok ? 'last reading' : 'last attempt'} ${fmtTime(o.fetchedAt)}${o.cached ? ' · cached' : ''}`;
+    return `<div class="organ${deadCls}${o.stale ? ' stale' : ''}" style="animation-delay:${(i * 80).toFixed(0)}ms"><div class="organ-head"><span class="organ-name">${name} ${staleTag}</span><span class="jewel${o.ok ? '' : o.awaiting ? ' awaiting' : ' dead'}${o.stale ? ' stale' : ''}"></span></div>` +
       `<div class="organ-source">${source}</div>${body}` +
-      `<div class="organ-meta">${o.ok ? 'last reading' : 'last attempt'} ${fmtTime(o.fetchedAt)}${o.cached ? ' · cached' : ''}</div></div>`;
+      `<div class="organ-meta">${meta}</div></div>`;
   }).join('');
 
   $('diaryList').innerHTML = payload.diary && payload.diary.length
@@ -419,13 +447,42 @@ function render(payload) {
     : '<div class="diary-empty">No entries yet.</div>';
 }
 
+/* ── Pete's home: chosen by the visitor, kept in this browser ──
+   Pete has no fixed home. The visitor picks where he lives (search,
+   geolocation, or a preset capital); the choice persists in
+   localStorage and rides along on every state request, so Pete's
+   face and lungs always read the place THIS visitor housed him in. */
+const HOME_KEY = 'patchwork-pete-home';
+let peteHome = null;
+try {
+  const raw = localStorage.getItem(HOME_KEY);
+  if (raw) {
+    const h = JSON.parse(raw);
+    if (h && Number.isFinite(+h.lat) && Number.isFinite(+h.lon) && typeof h.place === 'string' && h.place) {
+      peteHome = { lat: +h.lat, lon: +h.lon, place: h.place };
+    }
+  }
+} catch { peteHome = null; }
+
+function homeQuery() {
+  return peteHome
+    ? `?lat=${encodeURIComponent(peteHome.lat)}&lon=${encodeURIComponent(peteHome.lon)}&place=${encodeURIComponent(peteHome.place)}`
+    : '';
+}
+
+function setHome(h) {
+  peteHome = { lat: +h.lat, lon: +h.lon, place: String(h.place) };
+  try { localStorage.setItem(HOME_KEY, JSON.stringify(peteHome)); } catch { /* private mode: he still moves in for this visit */ }
+  load();
+}
+
 async function load(action) {
   const buttons = document.querySelectorAll('button[data-action]');
   buttons.forEach((b) => (b.disabled = true));
   try {
     const res = action
-      ? await fetch(`/api/refresh/${action}`, { method: 'POST' })
-      : await fetch('/api/state');
+      ? await fetch(`/api/refresh/${action}${homeQuery()}`, { method: 'POST' })
+      : await fetch(`/api/state${homeQuery()}`);
     render(await res.json());
   } catch (err) {
     $('petSummary').textContent = 'The lab itself is unreachable — the server did not answer. Pete cannot fake that either.';
@@ -436,7 +493,30 @@ async function load(action) {
 document.querySelectorAll('button[data-action]').forEach((b) =>
   b.addEventListener('click', () => load(b.dataset.action)));
 
-$('speakBtn').addEventListener('click', () => {
+/* ── Pete's voice: a stitched monster's delivery ─────────
+   Same words as ever — built from Pete's REAL state — but spoken
+   like the creature he is: the deepest English voice the visitor's
+   browser offers, pitch dropped to 0.4, slowed to 0.86, and the
+   line split into short phrases (phrases.js) with a held breath
+   between them. Eerie, never garbled. Client-side only. */
+const SPOOKY = { pitch: 0.4, rate: 0.86, pauseMs: 320 };
+const DEEP_VOICE_HINTS = [
+  'google uk english male', 'microsoft guy', 'microsoft christopher', 'microsoft davis',
+  'daniel', 'george', 'arthur', 'brian', 'david', 'fred', 'male',
+];
+function pickSpookyVoice() {
+  let voices = [];
+  try { voices = speechSynthesis.getVoices() || []; } catch { voices = []; }
+  const en = voices.filter((v) => /^en([-_]|$)/i.test(v.lang || ''));
+  const pool = en.length ? en : voices;
+  for (const hint of DEEP_VOICE_HINTS) {
+    const hit = pool.find((v) => (v.name || '').toLowerCase().includes(hint));
+    if (hit) return hit;
+  }
+  return pool[0] || null;
+}
+let speakRun = 0;
+$('speakBtn').addEventListener('click', async () => {
   if (!('speechSynthesis' in window)) {
     $('petSummary').textContent = 'This browser has no Web Speech voice — Pete stays silent here, honestly.';
     return;
@@ -445,35 +525,206 @@ $('speakBtn').addEventListener('click', () => {
   const s = current.state;
   const fact = current.organs.brain.ok && current.organs.brain.data.currentFact
     ? ` Today I learned about ${current.organs.brain.data.currentFact.title}.` : '';
-  const breath = s.scores.breathing === null ? ' I do not know how my breathing is — my lungs are silent.' : ` My breathing score is ${s.scores.breathing} out of 100.`;
-  const text = `${s.summary}${fact}${breath} My health is ${s.scores.health} out of 100.`;
+  const breath = s.scores.breathing === null
+    ? (s.awaitingHome ? ' I do not know how my breathing is — I have no home yet, so I have no air.' : ' I do not know how my breathing is — my lungs are silent.')
+    : ` My breathing score is ${s.scores.breathing} out of 100.`;
+  const homeLine = current.home ? ` I live in ${current.home.name}.` : ' I have no home yet — choose where I live, and my face and lungs will wake up.';
+  const text = `${s.summary}${homeLine}${fact}${breath} My health is ${s.scores.health} out of 100.`;
+  const phrases = splitPhrases(text);
+  if (!phrases.length) return;
   speechSynthesis.cancel();
-  speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+  const run = ++speakRun;
+  // The voice list often arrives asynchronously; give it one short chance.
+  if (!speechSynthesis.getVoices().length) {
+    await new Promise((resolve) => {
+      const timer = setTimeout(resolve, 350);
+      speechSynthesis.onvoiceschanged = () => { clearTimeout(timer); speechSynthesis.onvoiceschanged = null; resolve(); };
+    });
+    if (run !== speakRun) return;
+  }
+  const voice = pickSpookyVoice();
+  let i = 0;
+  const speakNext = () => {
+    if (run !== speakRun || i >= phrases.length) return;
+    const u = new SpeechSynthesisUtterance(phrases[i]);
+    if (voice) u.voice = voice;
+    u.pitch = SPOOKY.pitch;
+    u.rate = SPOOKY.rate;
+    u.volume = 1;
+    u.onend = () => { i += 1; if (run === speakRun && i < phrases.length) setTimeout(speakNext, SPOOKY.pauseMs); };
+    u.onerror = () => { /* a failed phrase ends the line quietly — no chaining on errors */ };
+    speechSynthesis.speak(u);
+  };
+  speakNext();
 });
 
-/* ---------- comparison panel: your air vs Pete's Borneo air ---------- */
+/* ── HAUNT THE LAB: synthesized ambience ─────────────────
+   No audio files, nothing recorded: the wind, the distant
+   minor-key bell and the old-house creaks are all synthesized
+   live with WebAudio when — and only when — a visitor presses
+   the toggle (it is OFF by default; browsers demand the click
+   anyway). One AudioContext exists for the page's whole life
+   and is reused across toggles, so nothing leaks; stopping
+   fades the master out, halts every source and timer, and
+   suspends the context. Labelled honestly wherever it appears:
+   this is generated atmosphere, not a field recording. */
+let hauntCtx = null;
+let haunt = null;
+function noiseBuffer(ctx, seconds) {
+  const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * seconds), ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+  return buf;
+}
+function hauntStart() {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) {
+    $('petSummary').textContent = 'This browser has no WebAudio — the lab stays silent here, honestly.';
+    return;
+  }
+  if (!hauntCtx) hauntCtx = new AC();
+  const ctx = hauntCtx;
+  ctx.resume();
+  const master = ctx.createGain();
+  master.gain.value = 0;
+  master.gain.linearRampToValueAtTime(0.85, ctx.currentTime + 1.4);
+  master.connect(ctx.destination);
+  const nodes = { sources: [], oscs: [], timers: [], master };
+
+  // — wind: looped noise through a wandering lowpass —
+  const wind = ctx.createBufferSource();
+  wind.buffer = noiseBuffer(ctx, 3);
+  wind.loop = true;
+  const windFilter = ctx.createBiquadFilter();
+  windFilter.type = 'lowpass';
+  windFilter.frequency.value = 320;
+  windFilter.Q.value = 0.6;
+  const windGain = ctx.createGain();
+  windGain.gain.value = 0.05;
+  wind.connect(windFilter); windFilter.connect(windGain); windGain.connect(master);
+  wind.start();
+  nodes.sources.push(wind);
+  const lfo = ctx.createOscillator();
+  lfo.frequency.value = 0.07;
+  const lfoDepth = ctx.createGain();
+  lfoDepth.gain.value = 170;
+  lfo.connect(lfoDepth); lfoDepth.connect(windFilter.frequency);
+  lfo.start();
+  nodes.oscs.push(lfo);
+  const lfo2 = ctx.createOscillator();
+  lfo2.frequency.value = 0.045;
+  const lfo2Depth = ctx.createGain();
+  lfo2Depth.gain.value = 0.02;
+  lfo2.connect(lfo2Depth); lfo2Depth.connect(windGain.gain);
+  lfo2.start();
+  nodes.oscs.push(lfo2);
+
+  // — a rare, distant bell in A minor —
+  const BELL = [110, 130.81, 146.83, 164.81, 196, 220];
+  const bell = () => {
+    if (!haunt) return;
+    const f = BELL[Math.floor(Math.random() * BELL.length)];
+    const t = ctx.currentTime;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.05, t + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 3.8);
+    g.connect(master);
+    [1, 2].forEach((mult, idx) => {
+      const o = ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.value = f * mult;
+      const og = ctx.createGain();
+      og.gain.value = idx === 0 ? 1 : 0.35;
+      o.connect(og); og.connect(g);
+      o.start(t); o.stop(t + 4);
+      nodes.oscs.push(o);
+    });
+    nodes.timers.push(setTimeout(bell, 15000 + Math.random() * 18000));
+  };
+  nodes.timers.push(setTimeout(bell, 4000));
+
+  // — an occasional soft creak, like the manor settling —
+  const creak = () => {
+    if (!haunt) return;
+    if (Math.random() < 0.75) {
+      const t = ctx.currentTime;
+      const src = ctx.createBufferSource();
+      src.buffer = noiseBuffer(ctx, 0.5);
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.Q.value = 9;
+      bp.frequency.setValueAtTime(750 + Math.random() * 250, t);
+      bp.frequency.exponentialRampToValueAtTime(240, t + 0.38);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.03, t + 0.09);
+      g.gain.linearRampToValueAtTime(0, t + 0.42);
+      src.connect(bp); bp.connect(g); g.connect(master);
+      src.start(t); src.stop(t + 0.5);
+      nodes.sources.push(src);
+    }
+    nodes.timers.push(setTimeout(creak, 9000 + Math.random() * 14000));
+  };
+  nodes.timers.push(setTimeout(creak, 6500));
+
+  haunt = nodes;
+  const btn = $('hauntBtn');
+  btn.textContent = 'Silence the Lab';
+  btn.setAttribute('aria-pressed', 'true');
+  btn.classList.add('haunting');
+}
+function hauntStop() {
+  if (!haunt) return;
+  const h = haunt;
+  haunt = null; // timers check this and die quietly
+  h.timers.forEach(clearTimeout);
+  const ctx = hauntCtx;
+  const t = ctx.currentTime;
+  h.master.gain.cancelScheduledValues(t);
+  h.master.gain.setValueAtTime(h.master.gain.value, t);
+  h.master.gain.linearRampToValueAtTime(0, t + 0.6);
+  setTimeout(() => {
+    h.sources.forEach((s) => { try { s.stop(); } catch { /* already silent */ } });
+    h.oscs.forEach((o) => { try { o.stop(); } catch { /* already silent */ } });
+    try { h.master.disconnect(); } catch { /* nothing to undo */ }
+    if (hauntCtx && hauntCtx.state === 'running') hauntCtx.suspend();
+  }, 700);
+  const btn = $('hauntBtn');
+  btn.textContent = 'Haunt the Lab';
+  btn.setAttribute('aria-pressed', 'false');
+  btn.classList.remove('haunting');
+}
+$('hauntBtn').addEventListener('click', () => { if (haunt) hauntStop(); else hauntStart(); });
+
+/* ---------- the home picker: where shall Pete live? ---------- */
 const PRESETS = [
-  ['Jakarta', -6.2088, 106.8456],
   ['New Delhi, India', 28.6139, 77.209],
-  ['Beijing, China', 39.9042, 116.4074],
-  ['Los Angeles, USA', 34.0522, -118.2437],
-  ['London, UK', 51.5074, -0.1278],
+  ['Tokyo, Japan', 35.6762, 139.6503],
+  ['London, United Kingdom', 51.5074, -0.1278],
+  ['New York, United States', 40.7128, -74.006],
   ['Sydney, Australia', -33.8688, 151.2093],
+  ['Jakarta, Indonesia', -6.2088, 106.8456],
 ];
 $('presets').innerHTML = PRESETS.map(([name, la, lo]) =>
   `<button class="preset" data-place="${name}" data-lat="${la}" data-lon="${lo}">${name.split(',')[0]}</button>`).join('');
 document.querySelectorAll('.preset').forEach((b) => b.addEventListener('click', () =>
-  compare({ lat: b.dataset.lat, lon: b.dataset.lon, place: b.dataset.place })));
+  setHome({ lat: b.dataset.lat, lon: b.dataset.lon, place: b.dataset.place })));
+
+$('movePeteBtn').addEventListener('click', () => {
+  $('homePicker').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  setTimeout(() => $('citySearch').focus({ preventScroll: true }), 450);
+});
 
 $('geoBtn').addEventListener('click', () => {
   if (!('geolocation' in navigator)) {
-    $('compareResult').innerHTML = '<div class="diary-empty">This browser cannot share its location — try a city search or a preset instead.</div>';
+    $('homeStatus').textContent = 'This browser cannot share its location — try a city search or a preset capital instead.';
     return;
   }
-  $('compareResult').innerHTML = '<div class="diary-empty">Asking your browser for your location…</div>';
+  $('homeStatus').textContent = 'Asking your browser for your location…';
   navigator.geolocation.getCurrentPosition(
-    (pos) => compare({ lat: pos.coords.latitude, lon: pos.coords.longitude, place: 'Your location' }),
-    () => { $('compareResult').innerHTML = '<div class="diary-empty">Location was not shared — no hard feelings. A preset works too.</div>'; },
+    (pos) => setHome({ lat: pos.coords.latitude, lon: pos.coords.longitude, place: 'Your location' }),
+    () => { $('homeStatus').textContent = 'Location was not shared — no hard feelings. A preset capital works too.'; },
     { timeout: 10000 }
   );
 });
@@ -495,45 +746,11 @@ $('citySearch').addEventListener('input', (e) => {
       box.querySelectorAll('div').forEach((d) => d.addEventListener('click', () => {
         box.style.display = 'none';
         $('citySearch').value = d.dataset.place;
-        compare({ lat: d.dataset.lat, lon: d.dataset.lon, place: d.dataset.place });
+        setHome({ lat: d.dataset.lat, lon: d.dataset.lon, place: d.dataset.place });
       }));
     } catch { box.style.display = 'none'; }
   }, 300);
 });
-
-async function compare({ lat, lon, place }) {
-  const box = $('compareResult');
-  box.innerHTML = '<div class="diary-empty">Reading your sky and air…</div>';
-  try {
-    const res = await fetch(`/api/compare?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&place=${encodeURIComponent(place)}`);
-    const j = await res.json();
-    const yL = j.you.lungs.data, pL = j.pete.lungs.data;
-    const yM = j.you.mood.data, pM = j.pete.mood.data;
-    const fmt = (v) => (v === null || v === undefined ? '—' : `${v}`);
-    const dAqi = j.difference.aqiUs;
-    const medalCls = dAqi === null || dAqi === 0 ? '' : dAqi > 0 ? 'diff-up' : 'diff-down';
-    const verdict = dAqi === null ? 'no verdict — a reading is missing'
-      : dAqi === 0 ? 'dead even — twin skies'
-      : dAqi > 0 ? 'your air hangs heavier than Pete\'s'
-      : 'your air is cleaner than Pete\'s';
-    const portrait = (place, L, M, cls) => `
-      <div class="duelist ${cls}">
-        <div class="duelist-place">${escapeHtml(place)}</div>
-        <div class="duel-aqi">${fmt(L && L.aqiUs)}</div>
-        <div class="duel-unit">US AQI</div>
-        <div class="duel-cond">${L ? escapeHtml(L.condition) + ' air' : 'no air reading'}</div>
-        <div class="duel-rows">PM2.5 ${fmt(L && L.pm25)} µg/m³ · PM10 ${fmt(L && L.pm10)} µg/m³<br>${M ? `${escapeHtml(M.condition)}, ${M.temperatureC}°C · wind ${M.windKmh} km/h` : 'no weather reading'}</div>
-      </div>`;
-    box.innerHTML = `<div class="duel">
-      ${portrait(j.place + ' — you', yL, yM, '')}
-      <div class="duel-medal"><span>Δ AQI</span><b class="${medalCls}">${dAqi === null ? '—' : (dAqi > 0 ? '+' : '') + dAqi}</b><small>${verdict}</small></div>
-      ${portrait('Pete — ' + j.home.name, pL, pM, 'pete')}
-    </div>
-    <div class="hint duel-note">${escapeHtml(j.note)}</div>`;
-  } catch {
-    box.innerHTML = '<div class="diary-empty">The comparison could not be read right now — the sky APIs did not answer.</div>';
-  }
-}
 
 load();
 setInterval(() => load(), 120000);

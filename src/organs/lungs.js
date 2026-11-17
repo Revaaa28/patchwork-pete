@@ -2,8 +2,9 @@
 
 // LUNGS — Open-Meteo Air Quality API (keyless) for the visitor's chosen
 // location. Pete breathes the real air there: PM2.5, PM10 and US AQI decide
-// whether he breathes easy or coughs — peat-fire haze in Borneo, winter
-// smog in Delhi, a clear day in Sydney; wherever the visitor puts him.
+// whether he breathes easy or coughs — peat-fire haze in the tropics,
+// winter smog in Delhi, a clear day in Sydney; wherever the visitor
+// chooses to house him.
 //
 // Optional extra: NASA FIRMS fire hotspots around the location are counted
 // ONLY when FIRMS_MAP_KEY is set in the environment (FIRMS needs a free
@@ -55,15 +56,28 @@ async function firmsHotspots(fetchFn, key, loc) {
   }
 }
 
-async function getLungs({ force = false, fetchFn, location, firmsKey } = {}) {
+async function getLungs({ force = false, fetchFn, location, firmsKey, retryDelays, sleep } = {}) {
   const loc = normalizeLocation(location);
+  const fetchedAt = new Date().toISOString();
+  if (!loc) {
+    // No home chosen yet: not dead, not zero — honestly awaiting.
+    return {
+      organ: 'lungs',
+      source: 'Open-Meteo Air Quality',
+      ok: false,
+      awaiting: true,
+      data: null,
+      error: null,
+      fetchedAt,
+      cached: false,
+    };
+  }
   const key = locationKey(loc);
   const cached = cache.get(key, force);
   if (cached) return cached;
-  const fetchedAt = new Date().toISOString();
-  const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${loc.lat}&longitude=${loc.lon}&current=pm2_5,pm10,us_aqi,european_aqi`;
+  const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${loc.lat}&longitude=${loc.lon}&current=pm2_5,pm10,us_aqi,european_aqi&timezone=auto`;
   try {
-    const json = await fetchJson(url, { fetchFn });
+    const json = await fetchJson(url, { fetchFn, retryDelays, sleep });
     const cur = json && json.current;
     if (!cur || (typeof cur.pm2_5 !== 'number' && typeof cur.us_aqi !== 'number')) {
       throw new Error('Unexpected Open-Meteo AQ payload shape');
@@ -77,6 +91,7 @@ async function getLungs({ force = false, fetchFn, location, firmsKey } = {}) {
       location: loc.place,
       lat: loc.lat,
       lon: loc.lon,
+      timezone: typeof json.timezone === 'string' ? json.timezone : null,
       fireHotspots24h: null,
       fireSource: 'NASA FIRMS not configured (set FIRMS_MAP_KEY to enable)',
     };
@@ -101,12 +116,20 @@ async function getLungs({ force = false, fetchFn, location, firmsKey } = {}) {
       cached: false,
     });
   } catch (err) {
+    const msg = String(err && err.message ? err.message : err);
+    const last = cache.getStale(key);
+    if (last && last.ok) {
+      // Stale-while-error for THIS place only: the last real air reading,
+      // labelled stale with its original fetchedAt — never fresh. (With
+      // no last good, the catch below keeps breathing honestly unknown.)
+      return { ...last, stale: true, error: msg, cached: false };
+    }
     return {
       organ: 'lungs',
       source: 'Open-Meteo Air Quality',
       ok: false,
       data: null,
-      error: String(err && err.message ? err.message : err),
+      error: msg,
       fetchedAt,
       cached: false,
     };
