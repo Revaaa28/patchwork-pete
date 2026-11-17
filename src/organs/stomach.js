@@ -20,7 +20,7 @@ const EVENTS_URL = `https://api.github.com/users/${USER}/events/public?per_page=
 const cache = makeCache(60 * 1000);
 
 function todayAtHome(now = new Date()) {
-  // Pete's home, Palangka Raya, keeps Asia/Pontianak time: UTC+7, no DST.
+  // Pete's home in Borneo keeps UTC+7 time (Asia/Pontianak), no DST.
   const shifted = new Date(now.getTime() + 7 * 60 * 60 * 1000);
   return shifted.toISOString().slice(0, 10);
 }

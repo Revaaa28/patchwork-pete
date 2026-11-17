@@ -453,7 +453,7 @@ $('speakBtn').addEventListener('click', () => {
 
 /* ---------- comparison panel: your air vs Pete's Borneo air ---------- */
 const PRESETS = [
-  ['Jakarta, Indonesia', -6.2088, 106.8456],
+  ['Jakarta', -6.2088, 106.8456],
   ['New Delhi, India', 28.6139, 77.209],
   ['Beijing, China', 39.9042, 116.4074],
   ['Los Angeles, USA', 34.0522, -118.2437],

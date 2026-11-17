@@ -72,10 +72,10 @@ test('lungs adapter: two locations return location-labelled readings (mock fetch
     seen.push(url);
     return { ok: true, status: 200, json: async () => ({ current: { pm2_5: 9, pm10: 14, us_aqi: 34, european_aqi: 20 } }) };
   };
-  const a = await getLungs({ force: true, fetchFn: aqFetch, firmsKey: '', location: { lat: -2.21, lon: 113.92, place: 'Palangka Raya, Borneo, Indonesia' } });
+  const a = await getLungs({ force: true, fetchFn: aqFetch, firmsKey: '', location: { lat: -2.21, lon: 113.92, place: 'Borneo' } });
   const b = await getLungs({ force: true, fetchFn: aqFetch, firmsKey: '', location: { lat: -33.8688, lon: 151.2093, place: 'Sydney, Australia' } });
   assert.equal(a.ok, true);
-  assert.equal(a.data.location, 'Palangka Raya, Borneo, Indonesia');
+  assert.equal(a.data.location, 'Borneo');
   assert.equal(b.data.location, 'Sydney, Australia');
   assert.equal(a.data.condition, 'clean');
   assert.equal(a.data.fireHotspots24h, null); // no FIRMS key -> honestly null

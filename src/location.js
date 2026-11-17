@@ -10,18 +10,19 @@
 // Home is configurable in exactly one place — environment variables:
 //   PETE_HOME_NAME  (default: the placeholder below)
 //   PETE_HOME_LAT, PETE_HOME_LON
-// Default home (Rev's pick, 2026-11-17): Palangka Raya, Central Kalimantan,
-// Borneo — the peat-haze heart of the "lungs of the world". When Borneo's
-// air is clean Pete breathes easy; when haze rolls in, Pete coughs. Rev may
-// re-point Pete's home by setting the env vars; no code change is needed
-// and nothing else in the codebase hard-codes a home city.
+// Default home (Rev's pick, 2026-11-17): Borneo — the peat-haze heart of
+// the "lungs of the world", labelled simply "Borneo" everywhere (Rev's
+// call: no city, province, or country names). When Borneo's air is clean
+// Pete breathes easy; when haze rolls in, Pete coughs. Rev may re-point
+// Pete's home by setting the env vars; no code change is needed and
+// nothing else in the codebase hard-codes a home place.
 //
 // Visitor locations are a separate, comparison-only concern ("Your air vs
 // Pete's air"): normalizeLocation() validates them, and they never feed
 // Pete's official state, scores, or diary.
 
 const HOME = {
-  name: process.env.PETE_HOME_NAME || 'Palangka Raya, Borneo, Indonesia',
+  name: process.env.PETE_HOME_NAME || 'Borneo',
   lat: Number.isFinite(Number(process.env.PETE_HOME_LAT)) && process.env.PETE_HOME_LAT !== undefined
     ? Number(process.env.PETE_HOME_LAT) : -2.21,
   lon: Number.isFinite(Number(process.env.PETE_HOME_LON)) && process.env.PETE_HOME_LON !== undefined

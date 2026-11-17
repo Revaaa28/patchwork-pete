@@ -26,7 +26,7 @@ Every adapter resolves (never rejects) to:
 | diary | Gemini `generateContent` | `GEMINI_API_KEY` | per state-change | narration only; template fallback labelled `source:'template'` |
 
 ## Location law (benchmark + comparison)
-- Pete is ONE shared creature with ONE benchmark home, configured in exactly one place (`src/location.js`, env `PETE_HOME_NAME` / `PETE_HOME_LAT` / `PETE_HOME_LON`; default Palangka Raya, Borneo, Indonesia · −2.21, 113.92).
+- Pete is ONE shared creature with ONE benchmark home, configured in exactly one place (`src/location.js`, env `PETE_HOME_NAME` / `PETE_HOME_LAT` / `PETE_HOME_LON`; default Borneo · −2.21, 113.92).
 - The mood and lungs adapters accept a location parameter, but the server's official state path SHALL always pass Pete's home. Caches are keyed by rounded coordinates so readings never mix.
 - Visitor locations (geolocation / geocoding search / presets) SHALL be served only by the comparison endpoint (`/api/compare`) and SHALL NOT influence Pete's state, scores, or diary.
 

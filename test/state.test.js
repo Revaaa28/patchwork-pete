@@ -9,10 +9,10 @@ const dead = (organ) => ({ organ, source: 'test', ok: false, data: null, error: 
 
 const healthy = () => ({
   heart: ok('heart', { priceUsd: 65000, change24hPct: 4.2 }),
-  mood: ok('mood', { weatherCode: 0, condition: 'clear', temperatureC: 31, windKmh: 6, location: 'Palangka Raya, Borneo, Indonesia' }),
+  mood: ok('mood', { weatherCode: 0, condition: 'clear', temperatureC: 31, windKmh: 6, location: 'Borneo' }),
   brain: ok('brain', { currentFact: { title: 'Octopus' }, memory: [{ title: 'Octopus' }, { title: 'Moon' }, { title: 'Tea' }] }),
   stomach: ok('stomach', { commitsToday: 4, pushesToday: 2, lastPushAt: new Date().toISOString(), user: 'Revaaa28' }),
-  lungs: ok('lungs', { pm25: 8.2, pm10: 12, aqiUs: 30, aqiEu: 18, condition: 'clean', location: 'Palangka Raya, Borneo, Indonesia' }),
+  lungs: ok('lungs', { pm25: 8.2, pm10: 12, aqiUs: 30, aqiEu: 18, condition: 'clean', location: 'Borneo' }),
 });
 
 test('all organs healthy -> thriving, no grey parts, not limping', () => {
@@ -50,7 +50,7 @@ test('GitHub zero commits today -> hungry', () => {
 
 test('storm weather -> scared face and gloomy state', () => {
   const r = healthy();
-  r.mood = ok('mood', { weatherCode: 95, condition: 'storm', temperatureC: 26, windKmh: 40, location: 'Palangka Raya, Borneo, Indonesia' });
+  r.mood = ok('mood', { weatherCode: 95, condition: 'storm', temperatureC: 26, windKmh: 40, location: 'Borneo' });
   const s = computeState(r);
   assert.equal(s.face, 'scared');
   assert.equal(s.overall, 'gloomy');
@@ -65,7 +65,7 @@ test('deterministic: same readings in, same state out', () => {
 
 test('rain -> gloomy even when fed', () => {
   const r = healthy();
-  r.mood = ok('mood', { weatherCode: 63, condition: 'rain', temperatureC: 27, windKmh: 9, location: 'Palangka Raya, Borneo, Indonesia' });
+  r.mood = ok('mood', { weatherCode: 63, condition: 'rain', temperatureC: 27, windKmh: 9, location: 'Borneo' });
   const s = computeState(r);
   assert.equal(s.overall, 'gloomy');
   assert.equal(s.face, 'gloomy');
@@ -80,7 +80,7 @@ test('clean Borneo air -> breathing easy, no smoke', () => {
 
 test('haze-level PM2.5 -> Pete coughs, overall smoky', () => {
   const r = healthy();
-  r.lungs = ok('lungs', { pm25: 132, pm10: 190, aqiUs: 178, aqiEu: 150, condition: 'haze', location: 'Palangka Raya, Borneo, Indonesia' });
+  r.lungs = ok('lungs', { pm25: 132, pm10: 190, aqiUs: 178, aqiEu: 150, condition: 'haze', location: 'Borneo' });
   const s = computeState(r);
   assert.equal(s.overall, 'smoky');
   assert.equal(s.smoky, true);

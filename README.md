@@ -7,7 +7,7 @@ Pete has no insides of his own. Each of his organs *is* a real third-party API, 
 
 ## Pete lives in Borneo 🌴
 
-Pete is **one shared creature** with **one home**: **Palangka Raya, Central Kalimantan, Borneo** — the peat-haze heart of the island they call *the lungs of the world*. His stitched-on lungs breathe Borneo's real air, and his face wears Borneo's real weather. When the rainforest air is clean, Pete breathes easy. When Borneo burns and the haze rolls in, Pete coughs — visibly, in the pixel art, in his scores, and in his diary.
+Pete is **one shared creature** with **one home**: **Borneo** — the peat-haze heart of the island they call *the lungs of the world*. His stitched-on lungs breathe Borneo's real air, and his face wears Borneo's real weather. When the rainforest air is clean, Pete breathes easy. When Borneo burns and the haze rolls in, Pete coughs — visibly, in the pixel art, in his scores, and in his diary.
 
 Because home is a single benchmark, every visitor and judge sees the **same Pete**, and his state is comparable day to day. Home is configured in exactly one place (environment: `PETE_HOME_NAME`, `PETE_HOME_LAT`, `PETE_HOME_LON` — see `src/location.js`); nothing else in the code hard-codes it.
 
@@ -49,7 +49,7 @@ npm test           # state-engine + adapter contract tests
 ```
 
 Optional environment:
-- `PETE_HOME_NAME`, `PETE_HOME_LAT`, `PETE_HOME_LON` — re-point Pete's benchmark home (default: Palangka Raya, Borneo, Indonesia · −2.21, 113.92).
+- `PETE_HOME_NAME`, `PETE_HOME_LAT`, `PETE_HOME_LON` — re-point Pete's benchmark home (default: Borneo · −2.21, 113.92).
 - `GEMINI_API_KEY` — enables Gemini-written diary lines (falls back to labelled templates without it).
 - `GITHUB_TOKEN` — raises the GitHub API rate limit for the stomach organ. Without it, a rate-limited response shows up honestly as a dead stomach, never as "zero commits".
 - `FIRMS_MAP_KEY` — enables NASA FIRMS fire-hotspot counts around Pete's home in the lungs reading. Without it, the lungs work on Open-Meteo air quality alone and the FIRMS field is reported as not configured.

@@ -10,7 +10,7 @@ These rules bind every change to Patchwork Pete, human- or agent-written.
 5. **Failures are shown, not hidden.** The UI must render dead organs as dead (grey part, red stitch-map card, the real error text). Never catch-and-substitute in the UI either.
 
 ## One home, one Pete (benchmark rule)
-- Pete lives in ONE benchmark home, configured only in `src/location.js` (env `PETE_HOME_NAME` / `PETE_HOME_LAT` / `PETE_HOME_LON`; default Palangka Raya, Borneo — the "lungs of the world" framing). His official mood and breathing come only from home's weather and air (standard US AQI / PM2.5 bands).
+- Pete lives in ONE benchmark home, configured only in `src/location.js` (env `PETE_HOME_NAME` / `PETE_HOME_LAT` / `PETE_HOME_LON`; default Borneo — the "lungs of the world" framing). His official mood and breathing come only from home's weather and air (standard US AQI / PM2.5 bands).
 - Visitor locations are comparison-only ("Your Air vs Pete's Borneo Air", `/api/compare`). They must never feed Pete's state, scores, or diary, and copy must never present a visitor's or a default place's air as Pete's.
 - The lungs organ breathes home air via Open-Meteo Air Quality; NASA FIRMS hotspots are counted only when `FIRMS_MAP_KEY` is configured — otherwise the field is null and labelled as not configured.
 

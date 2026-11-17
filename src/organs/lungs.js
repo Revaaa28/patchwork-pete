@@ -2,7 +2,7 @@
 
 // LUNGS — Open-Meteo Air Quality API (keyless) for the visitor's chosen
 // location. Pete breathes the real air there: PM2.5, PM10 and US AQI decide
-// whether he breathes easy or coughs — peat-fire haze in Kalimantan, winter
+// whether he breathes easy or coughs — peat-fire haze in Borneo, winter
 // smog in Delhi, a clear day in Sydney; wherever the visitor puts him.
 //
 // Optional extra: NASA FIRMS fire hotspots around the location are counted
