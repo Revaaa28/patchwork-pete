@@ -43,6 +43,7 @@
   <div class="home-line">
     <span id="homeLabel" class="home-label">Pete has no home yet — choose where he lives, and his face and lungs will wake up there.</span>
     <button id="movePeteBtn" class="move-btn" type="button">Move Pete</button>
+    <button id="guideBtn" class="move-btn" type="button">Guide</button>
   </div>
 </header>
 
@@ -74,9 +75,6 @@
         <div class="actions">
           <button data-action="stomach">Feed Pete</button>
           <button data-action="brain">Teach Pete</button>
-          <button data-action="mood">His Weather</button>
-          <button data-action="lungs">His Air</button>
-          <button data-action="heart">His Heart</button>
           <button id="speakBtn" class="speak">Make Pete Speak</button>
           <button id="hauntBtn" class="speak" aria-pressed="false" title="Synthesized ambience — wind, a distant bell, creaks and an original music-box melody, generated live in your browser. No audio files.">Haunt the Lab</button>
         </div>
@@ -102,6 +100,23 @@
     <div class="presets" id="presets"></div>
   </section>
 
+  <!-- ══════════ THE DATA MENU ══════════ -->
+  <section class="panel menu-panel rise" id="dataMenu">
+    <div class="panel-head">
+      <h2 class="panel-title">The Data Menu</h2>
+      <div class="panel-sub">Open an organ — see the real reading, not just the score</div>
+    </div>
+    <div class="menu-tabs" role="tablist" aria-label="Pete's organs">
+      <button class="menu-tab active" data-menu="weather" role="tab" type="button">🌦️ Weather</button>
+      <button class="menu-tab" data-menu="air" role="tab" type="button">🫁 Air</button>
+      <button class="menu-tab" data-menu="heart" role="tab" type="button">❤️ Heart</button>
+      <button class="menu-tab" data-menu="brain" role="tab" type="button">🧠 Brain</button>
+      <button class="menu-tab" data-menu="stomach" role="tab" type="button">🍽️ Stomach</button>
+      <button class="menu-tab" data-menu="diary" role="tab" type="button">📓 Diary</button>
+    </div>
+    <div id="menuPanel" class="menu-body"><div class="diary-empty">Waking Pete…</div></div>
+  </section>
+
   <!-- ══════════ SPECIMEN LEDGER ══════════ -->
   <section class="panel rise">
     <div class="panel-head">
@@ -112,16 +127,24 @@
     <div class="law"><b>The law of the house:</b> Pete's state is computed by deterministic code from raw organ readings — and only from the readings of the place he currently lives, the home you chose for him. If an API dies, that body part goes grey and Pete limps. He never fakes a reading.</div>
   </section>
 
-  <!-- ══════════ DIARY ══════════ -->
-  <section class="panel rise">
-    <div class="panel-head">
-      <h2 class="panel-title">Pete's Diary</h2>
-      <div class="panel-sub">In his own words — or honestly labelled otherwise</div>
-    </div>
-    <div id="diaryList" class="diary-list"><div class="diary-empty">No entries yet — Pete is still waking up.</div></div>
-  </section>
-
 </main>
+
+<!-- ══════════ THE GUIDE (first-visit tutorial) ══════════ -->
+<div id="guideOverlay" class="guide-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="guideTitle">
+  <div class="guide-card">
+    <div class="guide-step-label" id="guideStepLabel">Step 1 of 3</div>
+    <h3 class="guide-title" id="guideTitle"></h3>
+    <div class="guide-body" id="guideBody"></div>
+    <div class="guide-dots" id="guideDots" aria-hidden="true"></div>
+    <div class="guide-controls">
+      <button id="guideSkip" class="guide-skip" type="button">Skip the tour</button>
+      <span class="guide-nav">
+        <button id="guideBack" type="button">Back</button>
+        <button id="guideNext" type="button">Next</button>
+      </span>
+    </div>
+  </div>
+</div>
 
 <footer>
   <div class="foot-rule"><span></span><i>◆</i><span></span></div>

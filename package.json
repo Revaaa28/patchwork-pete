@@ -8,7 +8,7 @@
   "name": "patchwork-pete",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test test/state.test.js test/organs.test.js test/resilience.test.js test/phrases.test.js test/fallbacks.test.js test/melody.test.js"
+    "test": "node --test test/state.test.js test/organs.test.js test/resilience.test.js test/phrases.test.js test/fallbacks.test.js test/melody.test.js test/menu-data.test.js"
   },
   "type": "commonjs",
   "version": "0.1.0"

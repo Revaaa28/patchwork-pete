@@ -9,6 +9,7 @@ const canvas = document.getElementById('peteCanvas');
 const ctx = canvas.getContext('2d');
 const P = 12; // pixel size
 let current = null; // last /api/state payload
+let lastBpm = null; // Pete's derived heartbeat from the last live heart reading
 let t0 = performance.now();
 
 const GREY = '#5b6373';
@@ -357,8 +358,10 @@ function render(payload) {
   if (ATMO.heartAlive) {
     const chg = Number(heart.data.change24hPct) || 0;
     ATMO.bpm = Math.max(42, Math.min(126, Math.round(50 + Math.abs(chg) * 9 + (s.scores.energy - 50) * 0.18)));
+    lastBpm = ATMO.bpm;
     ATMO.heartText = `BTC $${Number(heart.data.priceUsd).toLocaleString('en-US')} · 24h ${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%`;
   } else {
+    lastBpm = null;
     ATMO.heartText = '';
   }
   $('ecgLabel').innerHTML = ATMO.heartAlive
@@ -446,9 +449,164 @@ function render(payload) {
       `<div class="organ-meta">${meta}</div></div>`;
   }).join('');
 
-  $('diaryList').innerHTML = payload.diary && payload.diary.length
-    ? payload.diary.map((e, i) => `<div class="diary-entry ${e.source === 'template' ? 'template' : ''}" style="animation-delay:${(i * 90).toFixed(0)}ms">${escapeHtml(e.text)}<div class="diary-meta">${fmtTime(e.at)} · state: ${escapeHtml(e.overall)} · <span class="src-tag ${e.source === 'gemini' ? 'src-gemini' : 'src-template'}">${e.source === 'gemini' ? 'written by Gemini' : 'template (no Gemini)'}</span></div></div>`).join('')
-    : '<div class="diary-empty">No entries yet.</div>';
+  renderMenu();
+}
+
+/* ── THE DATA MENU ─────────────────────────────────────────
+   Six tabs, one per organ, each opening the organ's REAL
+   reading — the fields the serving API actually returned,
+   the source that served them, the read time, and a stale
+   badge when the reading is a last-good on loan. A field a
+   source did not return is simply absent from the panel:
+   the menu never fills a gap with a plausible number. */
+let activeMenu = 'weather';
+document.querySelectorAll('.menu-tab').forEach((b) => b.addEventListener('click', () => {
+  activeMenu = b.dataset.menu;
+  document.querySelectorAll('.menu-tab').forEach((x) => x.classList.toggle('active', x === b));
+  renderMenu();
+}));
+
+const prettyCondition = (c) => String(c || '').replace(/-/g, ' ').replace(/^\w/, (ch) => ch.toUpperCase());
+const AQI_BANDS = {
+  clean: ['Good', 'Clean air — Pete breathes deep and easy. This is the air lungs are made for.'],
+  moderate: ['Moderate', 'Acceptable air — Pete breathes on without trouble, though the air is not pristine.'],
+  'unhealthy-sensitive': ['Unhealthy for sensitive groups', 'Most people breathe on, but sensitive lungs feel this air — Pete\'s breaths get shorter and shallower.'],
+  haze: ['Unhealthy', 'Hazy air — every breath is work. Pete coughs, and his stitched lungs turn grey-brown.'],
+  'severe-haze': ['Very unhealthy', 'Thick, dangerous haze — breathing hurts. Pete coughs hard and stays wrapped in smoke.'],
+};
+
+function menuMeta(o, fallbackSource) {
+  if (!o) return '';
+  const staleNote = o.stale
+    ? `<div class="menu-stale-note">This is the last real reading — the live API did not answer just now${o.error ? `: ${escapeHtml(o.error)}` : ''}</div>`
+    : '';
+  return `<div class="menu-meta"><span>Source · <b>${escapeHtml(o.source || fallbackSource || '')}</b></span>` +
+    `<span>${o.stale ? '<span class="stale-tag">stale</span> ' : ''}${o.ok ? 'read' : 'attempted'} at ${fmtTime(o.fetchedAt)}${o.cached ? ' · cached' : ''}</span></div>${staleNote}`;
+}
+function fieldGrid(rows) {
+  const kept = rows.filter(([, v]) => v !== null && v !== undefined && v !== '');
+  if (!kept.length) return '';
+  return `<div class="field-grid">${kept.map(([label, v]) =>
+    `<div class="field"><div class="field-label">${label}</div><div class="field-value">${v}</div></div>`).join('')}</div>`;
+}
+function organProblem(o, awaitingText) {
+  if (!o) return '<div class="diary-empty">This organ has not reported yet.</div>';
+  if (o.awaiting) return `<div class="organ-awaiting">⌂ ${awaitingText}</div>`;
+  if (!o.ok) return `<div class="organ-error">✖ ${escapeHtml(o.error || 'no answer')}<br>This organ is grey right now. Pete will not fake its reading — try again in a little while.</div>`;
+  return null;
+}
+
+function renderMenu() {
+  const box = $('menuPanel');
+  if (!box) return;
+  if (!current) { box.innerHTML = '<div class="diary-empty">Waking Pete…</div>'; return; }
+  const organs = current.organs;
+  const awaitingWeather = 'No home yet — choose where Pete lives in the picker above, and his face will read that place\'s weather. Nothing is faked in the meantime.';
+  const awaitingAir = 'No home yet — choose where Pete lives in the picker above, and his lungs will breathe that place\'s air. Nothing is faked in the meantime.';
+
+  if (activeMenu === 'weather') {
+    const o = organs.mood;
+    const problem = organProblem(o, awaitingWeather);
+    if (problem) { box.innerHTML = problem; return; }
+    const d = o.data || {};
+    box.innerHTML = menuMeta(o) + fieldGrid([
+      ['Condition', `<b>${escapeHtml(prettyCondition(d.condition))}</b>`],
+      ['Temperature', d.temperatureC != null ? `${d.temperatureC} °C` : null],
+      ['Feels like', d.feelsLikeC != null ? `${d.feelsLikeC} °C` : null],
+      ['Humidity', d.humidityPct != null ? `${d.humidityPct}%` : null],
+      ['Pressure', d.pressureHpa != null ? `${d.pressureHpa} hPa` : null],
+      ['Wind', d.windKmh != null ? `${d.windKmh} km/h` : null],
+      ['Where', d.location ? escapeHtml(d.location) : null],
+    ]) + '<p class="menu-note">This is the sky over the place Pete currently lives — his face wears it, and the light in his chamber follows it.</p>';
+    return;
+  }
+
+  if (activeMenu === 'air') {
+    const o = organs.lungs;
+    const problem = organProblem(o, awaitingAir);
+    if (problem) { box.innerHTML = problem; return; }
+    const d = o.data || {};
+    const band = AQI_BANDS[d.condition] || null;
+    box.innerHTML = menuMeta(o) + fieldGrid([
+      ['PM2.5', d.pm25 != null ? `${d.pm25} µg/m³` : null],
+      ['PM10', d.pm10 != null ? `${d.pm10} µg/m³` : null],
+      ['US AQI', d.aqiUs != null ? String(d.aqiUs) : null],
+      ['EU AQI', d.aqiEu != null ? String(d.aqiEu) : null],
+      ['Fire hotspots · 24h', typeof d.fireHotspots24h === 'number' ? String(d.fireHotspots24h) : null],
+    ]) + (band ? `<p class="menu-note"><b>${band[0]}.</b> ${band[1]}</p>` : '')
+      + (typeof d.fireHotspots24h !== 'number' && d.fireSource
+        ? `<p class="menu-note dim-note">🔥 ${escapeHtml(d.fireSource)}</p>` : '');
+    return;
+  }
+
+  if (activeMenu === 'heart') {
+    const o = organs.heart;
+    const problem = organProblem(o, '');
+    if (problem) { box.innerHTML = problem; return; }
+    const d = o.data || {};
+    box.innerHTML = menuMeta(o) + fieldGrid([
+      ['Bitcoin', d.priceUsd != null ? `$${Number(d.priceUsd).toLocaleString('en-US')}` : null],
+      ['24h change', d.change24hPct != null ? `${d.change24hPct >= 0 ? '+' : ''}${Number(d.change24hPct).toFixed(2)}%` : null],
+      ['Pete\'s heartbeat', lastBpm ? `${lastBpm} BPM` : null],
+      ['Served by', d.source ? escapeHtml(d.source) : null],
+    ]) + '<p class="menu-note">The market sets the tempo of Pete\'s chest — watch the gold ECG line under the stage beat at exactly this rate.</p>';
+    return;
+  }
+
+  if (activeMenu === 'brain') {
+    const o = organs.brain;
+    if (!o || (!o.ok && !(o.data && o.data.currentFact))) {
+      box.innerHTML = organProblem(o, '') ||
+        `<div class="organ-error">✖ ${escapeHtml((o && o.error) || 'no answer')}</div>`;
+      return;
+    }
+    const d = o.data || {};
+    const fact = d.currentFact;
+    const memory = Array.isArray(d.memory) ? d.memory : [];
+    box.innerHTML = menuMeta(o)
+      + (o.ok ? '' : `<div class="menu-stale-note">Wikipedia did not answer just now — Pete is reciting what he already knows${o.error ? `: ${escapeHtml(o.error)}` : ''}</div>`)
+      + (fact ? `<div class="fact-now"><div class="field-label">Pete is thinking about</div>
+          <a href="${fact.url || '#'}" target="_blank" rel="noopener">${escapeHtml(fact.title)}</a>
+          <p>${escapeHtml(fact.extract || '')}</p></div>` : '<div class="diary-empty">His head is empty — press “Teach Pete”.</div>')
+      + (memory.length > 1 ? `<div class="field-label list-label">Everything Pete has learned this visit</div><div class="menu-list">${
+          memory.map((f) => `<div class="menu-list-item"><a href="${f.url || '#'}" target="_blank" rel="noopener">${escapeHtml(f.title)}</a><span class="item-meta">learned ${fmtTime(f.learnedAt)}</span></div>`).join('')
+        }</div>` : '')
+      + '<p class="menu-note">Press “Teach Pete” on the stage and a new fact is stitched in — he remembers the last five.</p>';
+    return;
+  }
+
+  if (activeMenu === 'stomach') {
+    const o = organs.stomach;
+    const problem = organProblem(o, '');
+    if (problem) { box.innerHTML = problem; return; }
+    const d = o.data || {};
+    const commits = Array.isArray(d.recentCommits) ? d.recentCommits : [];
+    box.innerHTML = menuMeta(o) + fieldGrid([
+      ['Commits eaten today', String(d.commitsToday)],
+      ['Pushes today', String(d.pushesToday)],
+      ['Counting in', d.timezone ? escapeHtml(d.timezone) : null],
+      ['Last bite', d.lastPushAt ? fmtTime(d.lastPushAt) : null],
+    ])
+      + (d.method === 'push-fallback'
+        ? '<p class="menu-note">GitHub\'s commits API did not answer for every repo today, so part of this count falls back to one serving per push — the messages below are only the commits that were really fetched.</p>'
+        : '')
+      + (commits.length
+        ? `<div class="field-label list-label">Today's commits — his actual meals</div><div class="menu-list">${
+            commits.map((c) => `<div class="menu-list-item">${c.url
+              ? `<a href="${c.url}" target="_blank" rel="noopener">${escapeHtml(c.message)}</a>`
+              : escapeHtml(c.message)}<span class="item-meta">${escapeHtml(String(c.repo || '').split('/').pop() || '')} · ${fmtTime(c.at)}</span></div>`).join('')
+          }</div>`
+        : (d.commitsToday > 0
+          ? '<p class="menu-note">The count above is real, but no commit messages were fetched for it.</p>'
+          : '<p class="menu-note">No commits yet today — Pete is hungry. His belly lightens with every fresh commit.</p>'));
+    return;
+  }
+
+  // diary
+  const entries = current.diary || [];
+  box.innerHTML = entries.length
+    ? `<div class="diary-list">${entries.map((e, i) => `<div class="diary-entry ${e.source === 'template' ? 'template' : ''}" style="animation-delay:${(i * 90).toFixed(0)}ms">${escapeHtml(e.text)}<div class="diary-meta">${fmtTime(e.at)} · state: ${escapeHtml(e.overall)} · <span class="src-tag ${e.source === 'gemini' ? 'src-gemini' : 'src-template'}">${e.source === 'gemini' ? 'written by Gemini' : 'template (no Gemini)'}</span></div></div>`).join('')}</div>`
+    : '<div class="diary-empty">No entries yet — Pete is still waking up.</div>';
 }
 
 /* ── Pete's home: chosen by the visitor, kept in this browser ──
@@ -475,9 +633,14 @@ function homeQuery() {
 }
 
 function setHome(h) {
+  const hadHome = !!peteHome;
   peteHome = { lat: +h.lat, lon: +h.lon, place: String(h.place) };
   try { localStorage.setItem(HOME_KEY, JSON.stringify(peteHome)); } catch { /* private mode: he still moves in for this visit */ }
-  load();
+  load().then(() => {
+    // First home ever: the guided flow lands the visitor on the data
+    // menu, now fully unlocked. Later moves stay where the visitor is.
+    if (!hadHome) $('dataMenu').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
 }
 
 async function load(action) {
@@ -807,7 +970,71 @@ $('citySearch').addEventListener('input', (e) => {
   }, 300);
 });
 
+/* ── THE GUIDE: a three-step welcome ───────────────────────
+   First visit only: an elegant little tour — meet Pete, learn
+   that his organs are real data sources, then land on the home
+   picker. It is remembered in localStorage ('seen' is per
+   browser, like Pete's home), never shown uninvited again, and
+   the GUIDE button in the header reopens it on demand. Plain
+   fade/slide only — it never blocks the lab for long. */
+const GUIDE_KEY = 'patchwork-pete-guide-seen';
+const GUIDE_STEPS = [
+  {
+    title: 'Meet Pete',
+    body: `<p>Pete is <b>one shared pet, sewn — not born — from live, incompatible APIs</b>. He is not a picture of a pet: every part of his body is a real data source, breathing real numbers, right now.</p><p>And he has no home of his own. <b>He moves in with you</b> — you choose where he lives, and he lives there.</p>`,
+  },
+  {
+    title: 'His Organs Are Data',
+    body: `<p>Each stitch is a living feed:</p><ul class="guide-organs">
+      <li>❤️ <b>Heart</b> — the Bitcoin market</li>
+      <li>🌦️ <b>Face</b> — the weather where he lives</li>
+      <li>🫁 <b>Lungs</b> — the air quality where he lives</li>
+      <li>🧠 <b>Brain</b> — Wikipedia, one fact at a time</li>
+      <li>🍽️ <b>Stomach</b> — GitHub commits are his food</li>
+      <li>🔊 <b>Voice</b> — your own browser, deep and haunted</li>
+      <li>📓 <b>Diary</b> — written from his real state, never invented</li></ul>
+      <p>If an API dies, that organ goes grey and Pete limps. <b>He never fakes a reading.</b></p>`,
+  },
+  {
+    title: 'How to Visit',
+    body: `<p><b>First, choose where Pete lives</b> — search a country or city, use your location, or pick a capital. His face and lungs wake up in that place.</p><p>Then open the <b>Data Menu</b> to inspect each organ's real reading, and play: <b>Feed Pete</b>, <b>Teach Pete</b>, make him <b>Speak</b>, or <b>Haunt the Lab</b> and listen for the music box.</p>`,
+  },
+];
+let guideStep = 0;
+function renderGuideStep() {
+  const step = GUIDE_STEPS[guideStep];
+  $('guideStepLabel').textContent = `Step ${guideStep + 1} of ${GUIDE_STEPS.length}`;
+  $('guideTitle').textContent = step.title;
+  $('guideBody').innerHTML = step.body;
+  $('guideDots').innerHTML = GUIDE_STEPS.map((_, i) => `<span class="${i === guideStep ? 'on' : ''}"></span>`).join('');
+  $('guideBack').disabled = guideStep === 0;
+  $('guideNext').textContent = guideStep === GUIDE_STEPS.length - 1 ? 'Choose Pete\'s Home' : 'Next';
+}
+function showGuide() {
+  guideStep = 0;
+  renderGuideStep();
+  $('guideOverlay').hidden = false;
+}
+function closeGuide() {
+  $('guideOverlay').hidden = true;
+  try { localStorage.setItem(GUIDE_KEY, '1'); } catch { /* private mode: the tour simply returns next visit */ }
+  $('homePicker').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+$('guideNext').addEventListener('click', () => {
+  if (guideStep < GUIDE_STEPS.length - 1) { guideStep += 1; renderGuideStep(); }
+  else closeGuide();
+});
+$('guideBack').addEventListener('click', () => {
+  if (guideStep > 0) { guideStep -= 1; renderGuideStep(); }
+});
+$('guideSkip').addEventListener('click', closeGuide);
+$('guideBtn').addEventListener('click', showGuide);
+
 load();
 setInterval(() => load(), 120000);
+// First visit: offer the tour once the veil has had its moment.
+try {
+  if (!localStorage.getItem(GUIDE_KEY)) setTimeout(showGuide, 1400);
+} catch { /* storage unavailable: no tour, no trap */ }
 // The veil must never trap the page: lift it even if the first reading is slow.
 setTimeout(() => document.body.classList.add('revealed'), 2600);

@@ -68,7 +68,7 @@ const numOrNull = (v) => {
 };
 
 async function fetchOpenMeteo(loc, opts) {
-  const url = `${openMeteoBase()}/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,weather_code,wind_speed_10m&timezone=auto`;
+  const url = `${openMeteoBase()}/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,pressure_msl,weather_code,wind_speed_10m&timezone=auto`;
   const json = await fetchJson(url, opts);
   const cur = json && json.current;
   if (!cur || typeof cur.weather_code !== 'number') throw new Error('Unexpected Open-Meteo payload shape');
@@ -76,6 +76,9 @@ async function fetchOpenMeteo(loc, opts) {
     weatherCode: cur.weather_code,
     condition: conditionForCode(cur.weather_code),
     temperatureC: typeof cur.temperature_2m === 'number' ? cur.temperature_2m : null,
+    feelsLikeC: typeof cur.apparent_temperature === 'number' ? cur.apparent_temperature : null,
+    humidityPct: typeof cur.relative_humidity_2m === 'number' ? cur.relative_humidity_2m : null,
+    pressureHpa: typeof cur.pressure_msl === 'number' ? cur.pressure_msl : null,
     windKmh: typeof cur.wind_speed_10m === 'number' ? cur.wind_speed_10m : null,
     timezone: typeof json.timezone === 'string' ? json.timezone : null,
     source: 'Open-Meteo',
@@ -100,6 +103,9 @@ async function fetchMet(loc, opts) {
     weatherCode: null, // MET Norway speaks symbol_code, not WMO codes — honestly null
     condition,
     temperatureC: details.air_temperature,
+    feelsLikeC: null, // the compact product carries no apparent temperature — null, not derived
+    humidityPct: numOrNull(details.relative_humidity),
+    pressureHpa: numOrNull(details.air_pressure_at_sea_level),
     windKmh: windMs === null ? null : Math.round(windMs * 3.6 * 10) / 10, // m/s -> km/h
     timezone: null, // the compact product carries no IANA timezone
     source: 'MET Norway (fallback)',
@@ -141,6 +147,9 @@ async function fetchWttr(loc, opts) {
     weatherCode: null, // wttr.in speaks WWO codes, not WMO — honestly null (see above)
     condition: conditionForWwoCode(wwoCode),
     temperatureC: numOrNull(cur.temp_C),
+    feelsLikeC: numOrNull(cur.FeelsLikeC),
+    humidityPct: numOrNull(cur.humidity),
+    pressureHpa: numOrNull(cur.pressure),
     windKmh: numOrNull(cur.windspeedKmph),
     timezone: null, // wttr.in j1 carries no IANA timezone
     source: 'wttr.in (fallback)',

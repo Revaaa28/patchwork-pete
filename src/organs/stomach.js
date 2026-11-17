@@ -91,6 +91,32 @@ function countCommitsToday(events, now = new Date(), tz = 'UTC') {
   return { commitsToday: commits, pushesToday: pushes.length, lastPushAt };
 }
 
+// Shape one repo's commits-API response into display entries for the
+// data menu: first line of the message, the commit's own timestamp, and
+// its GitHub URL when the payload carries one. Malformed entries are
+// dropped, never repaired with invented text.
+function shapeCommitList(repo, commitsJson) {
+  if (!Array.isArray(commitsJson)) return [];
+  const out = [];
+  for (const c of commitsJson) {
+    const commit = c && c.commit;
+    const message = commit && typeof commit.message === 'string'
+      ? commit.message.split('\n')[0].trim()
+      : '';
+    const at = (commit && commit.author && commit.author.date)
+      || (commit && commit.committer && commit.committer.date)
+      || null;
+    if (!message || !at) continue;
+    out.push({
+      repo,
+      message,
+      at,
+      url: typeof c.html_url === 'string' ? c.html_url : null,
+    });
+  }
+  return out;
+}
+
 async function getStomach({ force = false, fetchFn, token, retryDelays, sleep, timezone } = {}) {
   const tz = safeTz(timezone);
   const cached = cache.get(tz, force);
@@ -107,6 +133,7 @@ async function getStomach({ force = false, fetchFn, token, retryDelays, sleep, t
 
     let commitsToday = 0;
     let method = 'commits-api';
+    const commitEntries = [];
     if (pushes.length) {
       const repos = [...new Set(pushes.map((p) => p.repo && p.repo.name).filter(Boolean))].slice(0, 5);
       const since = encodeURIComponent(localMidnightUtcIso(new Date(), tz));
@@ -118,18 +145,29 @@ async function getStomach({ force = false, fetchFn, token, retryDelays, sleep, t
           );
           if (!Array.isArray(commits)) throw new Error('Unexpected commits payload');
           commitsToday += commits.length;
+          commitEntries.push(...shapeCommitList(repo, commits));
         } catch {
-          // Honest fallback for this repo: one serving per push.
+          // Honest fallback for this repo: one serving per push. No
+          // commit entries for it — the messages were never fetched.
           method = 'push-fallback';
           commitsToday += pushes.filter((p) => p.repo && p.repo.name === repo).length;
         }
       }
     }
+    commitEntries.sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
     return cache.set(tz, {
       organ: 'stomach',
       source: `GitHub commits — @${USER}`,
       ok: true,
-      data: { commitsToday, pushesToday: pushes.length, lastPushAt, user: USER, method, timezone: tz },
+      data: {
+        commitsToday,
+        pushesToday: pushes.length,
+        lastPushAt,
+        user: USER,
+        method,
+        timezone: tz,
+        recentCommits: commitEntries.slice(0, 10),
+      },
       error: null,
       fetchedAt,
       cached: false,
@@ -155,4 +193,4 @@ async function getStomach({ force = false, fetchFn, token, retryDelays, sleep, t
   }
 }
 
-module.exports = { getStomach, countCommitsToday, todayInTz, todaysPushes, localMidnightUtcIso, safeTz };
+module.exports = { getStomach, countCommitsToday, todayInTz, todaysPushes, localMidnightUtcIso, safeTz, shapeCommitList };
