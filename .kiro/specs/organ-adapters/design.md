@@ -6,8 +6,8 @@ Feature: `organ-adapters`
 ```
 src/fetchJson.js        fetch + per-attempt timeout + retry/backoff + TTL caches with last-good (single + per-location keyed)
 src/location.js         visitor-chosen home validation + cache keys (no default home exists)
-src/organs/heart.js     CoinGecko
-src/organs/mood.js      Open-Meteo weather, location-parameterised (+ conditionForCode)
+src/organs/heart.js     CoinGecko -> Coinbase -> Kraken (labelled fallback chain, Requirement 7)
+src/organs/mood.js      Open-Meteo weather -> MET Norway -> wttr.in (labelled fallbacks), location-parameterised (+ conditionForCode / conditionForMetSymbol / conditionForWwoCode)
 src/organs/lungs.js     Open-Meteo Air Quality, location-parameterised (+ conditionForAir, optional FIRMS)
 src/organs/brain.js     Wikipedia (+ in-memory fact memory, last 5)
 src/organs/stomach.js   GitHub events + commits (+ countCommitsToday, exported for tests)
@@ -27,6 +27,8 @@ server.js               state for the visitor-chosen home (?lat&lon&place) -> co
 - **Retry with backoff (2026-11-17).** `fetchJson` retries transient failures only (429, 5xx, network/abort): delays 1s/3s/8s, `Retry-After` honoured (max 8s), ~15s total backoff budget. Adapters accept `{ retryDelays, sleep }` so tests run the whole matrix deterministically with zeroed delays (`test/resilience.test.js`).
 - **Stale-while-error (2026-11-17).** Caches keep their last value past TTL (`getStale()` / `getStale(key)`; keyed cache no longer deletes expired entries). An adapter's failure path serves that value as `{ ...last, stale:true, error:<real error> }` — original `fetchedAt` untouched, and the stale wrapper is never written back into the cache (which would launder its timestamp). The state engine scores stale readings, keeps the part coloured, lists them in `staleOrgans`, and appends a staleness note to the summary; the diary signature includes the stale set so a new entry narrates the change. No last good ⇒ unchanged dead-organ behaviour.
 - **Boot warm-up (2026-11-17).** `server.js` fires one `fullState()` (fire-and-forget) when it starts listening, seeding TTL caches and last-goods before the first visitor — a Render cold start should not meet a judge with never-read organs.
+- **Labelled fallback sources (2026-11-17, Requirement 7).** CoinGecko and the Open-Meteo forecast API proved *permanently* 429 from Render's shared IP, so heart and mood each walk an ordered source chain (heart: CoinGecko → Coinbase → Kraken; mood: Open-Meteo → MET Norway → wttr.in), each source getting the full retry policy before the next is tried. The winner names itself in `data.source` and the reading `source`; the ledger prints the payload's source. Unsuppliable fields are null (MET/wttr `weatherCode` and `timezone`; Coinbase change without stats). MET gets its terms-required descriptive User-Agent. Source base URLs are env-overridable (`PETE_*_BASE_URL`) purely so a forced-failure check can kill a primary and watch the fallback serve.
+- **Background refresher (2026-11-17, Requirement 7).** `server.js` tracks the last ~5 requested locations (insertion-ordered Map) and, every ~3 min, re-reads the location-free organs plus those locations' mood/lungs with plain non-force reads (TTL-fresh entries cost nothing), skipping a cycle if one is still running; the timer is unref'd and nothing is persisted. The stomach re-counts under the most recent visitor's timezone.
 
 ## Error taxonomy (all become `ok:false`)
 HTTP non-2xx · network/abort · payload-shape mismatch (validated field-by-field) · GitHub rate limit (HTTP 403).

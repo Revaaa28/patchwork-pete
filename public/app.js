@@ -423,6 +423,10 @@ function render(payload) {
 
   $('organGrid').innerHTML = ORGAN_META.map(([key, name, source], i) => {
     const o = key === 'voice' ? payload.voice : payload.organs[key];
+    // The ledger names the source that ACTUALLY produced the reading —
+    // the payload's own `source` wins over the static label, so a
+    // labelled fallback (Coinbase, MET Norway, …) shows as itself.
+    const srcLabel = (o && o.source) || source;
     const deadCls = o.ok ? '' : o.awaiting ? ' awaiting' : ' dead';
     const staleTag = o.stale ? '<span class="stale-tag">stale</span>' : '';
     const body = o.ok
@@ -438,7 +442,7 @@ function render(payload) {
         ? `stale · read at ${fmtTime(o.fetchedAt)} · the live API did not answer just now`
         : `${o.ok ? 'last reading' : 'last attempt'} ${fmtTime(o.fetchedAt)}${o.cached ? ' · cached' : ''}`;
     return `<div class="organ${deadCls}${o.stale ? ' stale' : ''}" style="animation-delay:${(i * 80).toFixed(0)}ms"><div class="organ-head"><span class="organ-name">${name} ${staleTag}</span><span class="jewel${o.ok ? '' : o.awaiting ? ' awaiting' : ' dead'}${o.stale ? ' stale' : ''}"></span></div>` +
-      `<div class="organ-source">${source}</div>${body}` +
+      `<div class="organ-source">${escapeHtml(srcLabel)}</div>${body}` +
       `<div class="organ-meta">${meta}</div></div>`;
   }).join('');
 

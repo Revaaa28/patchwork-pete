@@ -18,8 +18,8 @@ Every adapter resolves (never rejects) to:
 ## Organs
 | Organ | API | Key | Cache | Reading |
 |---|---|---|---|---|
-| heart | CoinGecko `simple/price` BTC/USD + 24h change | none | 2 min (≥60s required) | `{ priceUsd, change24hPct }` |
-| mood | Open-Meteo forecast at Pete's home | none | 10 min, keyed by coords | `{ weatherCode, condition, temperatureC, windKmh, location }` |
+| heart | CoinGecko `simple/price` BTC/USD + 24h change → labelled fallbacks: Coinbase Exchange ticker/stats, then Kraken Ticker (Requirement 7) | none | 2 min (≥60s required) | `{ priceUsd, change24hPct, source }` |
+| mood | Open-Meteo forecast at Pete's home → labelled fallbacks: MET Norway locationforecast, then wttr.in (Requirement 7) | none | 10 min, keyed by coords | `{ weatherCode, condition, temperatureC, windKmh, location, timezone, source }` |
 | lungs | Open-Meteo Air Quality at Pete's home (+ optional NASA FIRMS hotspots) | none (`FIRMS_MAP_KEY` optional) | 10 min, keyed by coords | `{ pm25, pm10, aqiUs, aqiEu, condition, location, fireHotspots24h }` |
 | brain | Wikipedia REST random summary | none | n/a — Pete's memory (last 5) | `{ currentFact, memory[] }` |
 | stomach | GitHub events + commits API for `Revaaa28` | optional `GITHUB_TOKEN` | 60s | `{ commitsToday, pushesToday, lastPushAt, method }` (home-timezone day) |
@@ -62,3 +62,12 @@ Motivation, verified live: from the Render deployment's shared egress IP, CoinGe
 3. WHEN no last good exists THEN the organ SHALL return `ok:false` exactly as before — staleness never invents a first reading, and never leaks across locations.
 4. On server start, the server SHALL warm up all home organs once (fire-and-forget) so caches and last-goods seed before the first visitor.
 5. TTLs: heart 2 min, mood 10 min, lungs 10 min (stomach 60s, unchanged).
+
+### Requirement 7: Labelled fallback sources + background refresher (added 2026-11-17)
+Motivation, verified live: from the Render deployment's shared egress IP, CoinGecko and the Open-Meteo forecast API answered HTTP 429 on EVERY check — permanently rate-limited, not bursty — so Requirement 6's stale path had no last good to serve for those organs (brain and lungs, on other hosts, answered every time). Pete shall have second sources — without ever disguising which source spoke.
+1. The heart SHALL try, in order: CoinGecko, Coinbase Exchange (ticker + stats), Kraken Ticker — each only after the previous source exhausts Requirement 6's retry policy. The face SHALL try, in order: Open-Meteo forecast, MET Norway locationforecast/2.0/compact, wttr.in `?format=j1`. All sources SHALL be keyless.
+2. The winning source SHALL be named in the reading: `data.source` SHALL be exactly `CoinGecko` | `Coinbase (fallback)` | `Kraken (fallback)` (heart) or `Open-Meteo` | `MET Norway (fallback)` | `wttr.in (fallback)` (mood), the reading-level `source` SHALL say the same, and the Specimen Ledger SHALL print the payload's own source line. A fallback reading SHALL NEVER be presented as the primary source.
+3. Fields a fallback cannot supply SHALL be `null`, never copied from another source's shape or invented: MET Norway has no WMO code (`weatherCode:null`; its `symbol_code` is mapped to the condition bucket), wttr.in codes are WWO not WMO (`weatherCode:null`; mapped on the WWO table), neither weather fallback provides an IANA timezone (`timezone:null`; the stomach's day boundary then uses the lungs' timezone or UTC), and a Coinbase price without its stats answer has `change24hPct:null`.
+4. The MET Norway call SHALL send a descriptive User-Agent identifying the project, per MET's terms.
+5. WHEN every source for an organ fails THEN Requirement 6 applies unchanged: last good served stale (with its ORIGINAL source label), or `ok:false` with an error naming every source's failure. The lungs, brain, and stomach SHALL have no fallback sources (lungs/brain answer reliably; the stomach's only cure is `GITHUB_TOKEN`).
+6. While the server runs, a background refresher SHALL re-read the location-free organs and the mood/lungs of the most recently requested locations (at most ~5 location keys) about every 3 minutes, using plain non-force reads within the adapters' normal TTL/retry budget, SHALL skip a cycle while a previous one is still running, and SHALL keep everything in memory only.

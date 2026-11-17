@@ -10,7 +10,7 @@ const { getStomach } = require('./src/organs/stomach');
 const { getLungs } = require('./src/organs/lungs');
 const { getDiary } = require('./src/organs/diary');
 const { computeState } = require('./src/state');
-const { normalizeLocation } = require('./src/location');
+const { normalizeLocation, locationKey } = require('./src/location');
 const { fetchJson } = require('./src/fetchJson');
 
 const app = express();
@@ -28,6 +28,27 @@ function locationFromRequest(req) {
   return normalizeLocation({ lat: q.lat, lon: q.lon, place: q.place });
 }
 
+// Recent homes, for the background refresher below: the last few places
+// visitors actually asked about (most recent last), capped so a burst
+// of one-off geocodes cannot turn the refresher into a fetch storm.
+// In-memory only — a restart forgets them, and Pete simply re-learns
+// where his visitors live from their next visit.
+const RECENT_LOCATION_LIMIT = 5;
+const recentLocations = new Map(); // locationKey -> loc
+function trackLocation(loc) {
+  if (!loc) return;
+  const key = locationKey(loc);
+  recentLocations.delete(key); // re-insert: now the most recent
+  recentLocations.set(key, loc);
+  while (recentLocations.size > RECENT_LOCATION_LIMIT) {
+    recentLocations.delete(recentLocations.keys().next().value);
+  }
+}
+
+// The timezone the stomach most recently counted "today" in — the
+// refresher re-counts under the same sky the last visitor used.
+let lastStomachTimezone = 'UTC';
+
 async function collectReadings(force = {}, loc = null) {
   const [heart, mood, brain, lungs] = await Promise.all([
     getHeart({ force: !!force.heart }),
@@ -35,9 +56,12 @@ async function collectReadings(force = {}, loc = null) {
     getBrain({ force: !!force.brain }),
     getLungs({ force: !!force.lungs, location: loc }),
   ]);
-  // The stomach counts "today" in the chosen home's timezone (reported by
-  // Open-Meteo with its readings); no home yet -> UTC.
+  // The stomach counts "today" in the chosen home's timezone (reported
+  // by Open-Meteo with its readings). When a weather FALLBACK served the
+  // face (MET Norway / wttr.in provide no IANA timezone), mood's tz is
+  // null and the lungs' timezone — or UTC — carries the day boundary.
   const tz = (mood.data && mood.data.timezone) || (lungs.data && lungs.data.timezone) || 'UTC';
+  lastStomachTimezone = tz;
   const stomach = await getStomach({ force: !!force.stomach, timezone: tz });
   return { heart, mood, brain, stomach, lungs };
 }
@@ -67,7 +91,9 @@ async function fullState(force = {}, loc = null) {
 
 app.get('/api/state', async (req, res) => {
   try {
-    res.json(await fullState({}, locationFromRequest(req)));
+    const loc = locationFromRequest(req);
+    trackLocation(loc);
+    res.json(await fullState({}, loc));
   } catch (err) {
     res.status(500).json({ error: String(err && err.message ? err.message : err) });
   }
@@ -80,7 +106,9 @@ app.post('/api/refresh/:organ', async (req, res) => {
   const organ = req.params.organ;
   if (!ORGANS.includes(organ)) return res.status(404).json({ error: `Unknown organ: ${organ}` });
   try {
-    res.json(await fullState({ [organ]: true, diary: organ === 'brain' }, locationFromRequest(req)));
+    const loc = locationFromRequest(req);
+    trackLocation(loc);
+    res.json(await fullState({ [organ]: true, diary: organ === 'brain' }, loc));
   } catch (err) {
     res.status(500).json({ error: String(err && err.message ? err.message : err) });
   }
@@ -113,6 +141,41 @@ app.get('/api/geocode', async (req, res) => {
 
 app.get('/healthz', (req, res) => res.json({ ok: true, service: 'patchwork-pete' }));
 
+// BACKGROUND REFRESHER — every ~3 minutes, quietly re-read the organs so
+// the stale-while-error caches stay populated with RECENT last-goods
+// instead of whatever a cold boot managed to grab. Gentle by design:
+// plain (non-force) reads, so anything still inside its TTL costs no
+// request at all; the adapters' own retry policy is the whole budget;
+// and a cycle that finds the previous one still running is skipped.
+// Location-free organs (heart, brain, stomach) always refresh; mood and
+// lungs refresh for the handful of homes visitors recently asked about.
+// (Brain note: a plain read only fetches when Pete's memory is empty —
+// the refresher keeps his head from being empty, it does not rotate
+// what he knows; teaching him something new stays the visitor's button.)
+let refreshRunning = false;
+async function backgroundRefreshCycle() {
+  if (refreshRunning) return;
+  refreshRunning = true;
+  try {
+    await Promise.all([
+      getHeart({}),
+      getBrain({}),
+      getStomach({ timezone: lastStomachTimezone }),
+    ]);
+    for (const loc of [...recentLocations.values()]) {
+      await Promise.all([getMood({ location: loc }), getLungs({ location: loc })]);
+    }
+  } catch { /* adapters resolve instead of throwing; this is belt-and-braces */ } finally {
+    refreshRunning = false;
+  }
+}
+
+function startBackgroundRefresher(intervalMs = 3 * 60 * 1000) {
+  const timer = setInterval(() => { backgroundRefreshCycle().catch(() => {}); }, intervalMs);
+  if (typeof timer.unref === 'function') timer.unref(); // never keep a process alive
+  return timer;
+}
+
 if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`Patchwork Pete is alive on http://localhost:${PORT} — he moves in with each visitor; no fixed home`);
@@ -124,7 +187,9 @@ if (require.main === module) {
     // where Pete lives. Fire-and-forget; a failed warm-up changes
     // nothing (organs stay honestly dead until a read succeeds).
     fullState().catch(() => {});
+    // …and keep those last-goods recent while the server lives.
+    startBackgroundRefresher();
   });
 }
 
-module.exports = { app, fullState, computeState, parseGeocodeResults };
+module.exports = { app, fullState, computeState, parseGeocodeResults, trackLocation, recentLocations, backgroundRefreshCycle };
