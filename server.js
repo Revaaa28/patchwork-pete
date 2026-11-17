@@ -89,13 +89,48 @@ async function fullState(force = {}, loc = null) {
   };
 }
 
+// PAYLOAD CACHE (stale-while-revalidate) — added 2026-11-17 after Rev's
+// "waking Pete up takes forever": a home-carrying /api/state used to cost
+// 15–19s EVERY time, because the mood fallback chain (Open-Meteo 429 from
+// Render's shared IP → fetchJson retries with ~12s of backoff → MET
+// Norway) ran before a single byte was served, even when the same home
+// had been read a minute earlier. Now the last full payload per home is
+// served instantly (its organs carry their own fetchedAt / last-reading
+// times, so the age of every reading stays visible — nothing is dressed
+// up as fresher than it is) and a single background rebuild refreshes
+// it. Only a home's first-ever request pays the full chain.
+const STATE_CACHE_TTL_MS = 15 * 60 * 1000;
+const STATE_REFRESH_AFTER_MS = 45 * 1000;
+const stateCache = new Map(); // key -> { payload, at }
+const stateRefreshing = new Set(); // keys with a rebuild in flight
+function stateCacheKey(loc) {
+  return loc ? locationKey(loc) : '__homeless__';
+}
+function refreshStateInBackground(loc) {
+  const key = stateCacheKey(loc);
+  if (stateRefreshing.has(key)) return;
+  stateRefreshing.add(key);
+  fullState({}, loc)
+    .then((payload) => stateCache.set(key, { payload, at: Date.now() }))
+    .catch(() => { /* a failed rebuild keeps the last good payload */ })
+    .finally(() => stateRefreshing.delete(key));
+}
+
 app.get('/api/state', async (req, res) => {
   try {
     const loc = locationFromRequest(req);
     trackLocation(loc);
-    res.json(await fullState({}, loc));
+    const key = stateCacheKey(loc);
+    const hit = stateCache.get(key);
+    if (hit && Date.now() - hit.at < STATE_CACHE_TTL_MS) {
+      if (Date.now() - hit.at > STATE_REFRESH_AFTER_MS) refreshStateInBackground(loc);
+      return res.json(hit.payload);
+    }
+    const payload = await fullState({}, loc);
+    stateCache.set(key, { payload, at: Date.now() });
+    return res.json(payload);
   } catch (err) {
-    res.status(500).json({ error: String(err && err.message ? err.message : err) });
+    return res.status(500).json({ error: String(err && err.message ? err.message : err) });
   }
 });
 
@@ -108,7 +143,9 @@ app.post('/api/refresh/:organ', async (req, res) => {
   try {
     const loc = locationFromRequest(req);
     trackLocation(loc);
-    res.json(await fullState({ [organ]: true, diary: organ === 'brain' }, loc));
+    const payload = await fullState({ [organ]: true, diary: organ === 'brain' }, loc);
+    stateCache.set(stateCacheKey(loc), { payload, at: Date.now() });
+    res.json(payload);
   } catch (err) {
     res.status(500).json({ error: String(err && err.message ? err.message : err) });
   }
