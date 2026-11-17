@@ -37,27 +37,42 @@
 <div class="alive-flash" aria-hidden="true"></div>
 
 <header class="topbar">
-  <div class="ornament"><span></span><i>◆</i><span></span></div>
   <div class="brand"><span class="brand-bolt"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4.8 13.6h5.7L9.2 22l8.4-11.8h-5.8L13 2z"/></svg></span> PATCHWORK PETE</div>
+  <nav class="pill-nav" aria-label="On this page">
+    <a href="#stagePanel">The Creature</a>
+    <a href="#homePicker">His Home</a>
+    <a href="#dataMenu">Data Menu</a>
+    <a href="#ledgerPanel">Ledger</a>
+  </nav>
+  <div class="topbar-actions">
+    <button id="movePeteBtn" class="move-btn" type="button">Move Pete</button>
+    <button id="guideBtn" class="move-btn guide-pill" type="button">Guide</button>
+  </div>
   <div class="topbar-sub">One shared pet, sewn from live APIs — who moves in with you · Kiroween 2026 · Frankenstein</div>
   <div id="overallBadge" class="badge badge-loading">waking Pete up…</div>
   <div class="home-line">
     <span id="homeLabel" class="home-label">Pete has no home yet — choose where he lives, and his face and lungs will wake up there.</span>
-    <button id="movePeteBtn" class="move-btn" type="button">Move Pete</button>
-    <button id="guideBtn" class="move-btn" type="button">Guide</button>
   </div>
 </header>
 
 <main class="layout">
   <!-- ══════════ THE GRAND STAGE ══════════ -->
-  <section class="panel stage-panel rise">
-    <div class="panel-head">
-      <h2 class="panel-title">The Creature</h2>
-      <div class="panel-sub">Specimen Nº 1 · sewn, not born · presented alive</div>
+  <section class="panel stage-panel rise" id="stagePanel">
+    <div class="hero-copy">
+      <h1 class="hero-title"><span class="ht-line ht-serif">Stitched from</span><span class="ht-line ht-grot">LIVING DATA</span></h1>
+      <div class="panel-sub hero-sub">Specimen Nº 1 · sewn, not born · presented alive</div>
     </div>
     <div class="stage">
       <div class="scene" id="scene">
         <div class="scene-sky"></div>
+        <svg class="scene-rock" viewBox="0 0 600 240" preserveAspectRatio="none" aria-hidden="true">
+          <path class="rock-body" d="M0 240 L0 150 L52 118 L104 138 L158 96 L214 122 L268 78 L330 108 L386 66 L442 100 L498 74 L552 104 L600 84 L600 240 Z"/>
+          <path class="rock-strata" d="M0 176 L84 158 L196 178 L318 156 L436 176 L600 152"/>
+          <path class="rock-strata" d="M0 208 L110 192 L252 210 L398 190 L600 206"/>
+          <path class="vein" d="M96 240 L128 178 L118 138 L156 100"/>
+          <path class="vein" d="M318 240 L306 184 L330 140 L316 96 L344 66"/>
+          <path class="vein" d="M492 240 L478 190 L504 148 L492 108"/>
+        </svg>
         <div class="arch" aria-hidden="true"><div class="arch-mullion"></div></div>
         <div class="spotlight" aria-hidden="true"></div>
         <div class="scene-haze" aria-hidden="true"></div>
@@ -82,6 +97,13 @@
           <button id="hauntBtn" class="speak" aria-pressed="false" title="Synthesized ambience — wind, a distant bell, creaks and an original music-box melody, generated live in your browser. No audio files.">Haunt the Lab</button>
         </div>
         <div class="hint">Feed = fresh GitHub commits · Teach = a new Wikipedia fact · Pete's voice runs in your browser (Web Speech API — deep, slow, and a little haunted). “Haunt the Lab” is synthesized ambience — WebAudio wind, bells, creaks and an original music-box melody generated live, no audio files. The gold thread is real: every stitch is a live API.</div>
+      </div>
+    </div>
+    <div class="hero-captions">
+      <p class="cap-left">Every stitch is a living feed — a price, a sky, a breath, a fact, a commit. Nothing here is a picture of data. All of it <em>is</em> data, still warm.</p>
+      <div class="cap-right">
+        <p>Peel back his layers in the Specimen Ledger below: six organs, six provenances, each one read live — or grey, honestly, when its world goes silent.</p>
+        <button id="peelBtn" class="peel-btn" type="button">Peel His Layers</button>
       </div>
     </div>
   </section>
@@ -121,7 +143,7 @@
   </section>
 
   <!-- ══════════ SPECIMEN LEDGER ══════════ -->
-  <section class="panel rise">
+  <section class="panel rise" id="ledgerPanel">
     <div class="panel-head">
       <h2 class="panel-title">The Specimen Ledger</h2>
       <div class="panel-sub">Every organ, its provenance, its living state</div>

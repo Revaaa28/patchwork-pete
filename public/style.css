@@ -367,3 +367,79 @@ footer a{color:var(--gold-soft);text-decoration:none;border-bottom:1px dotted va
 .list-label{margin-top:16px}
 .guide-controls{display:flex;justify-content:space-between;align-items:center;margin-top:11px}
 .guide-nav{display:flex;gap:8px}
+
+/* ═══════════════ UI v4 "STRATA" — after MotionSites' Interactive Discovery ═══════════════
+   Pure-black hero field; a two-line giant headline (italic serif over bold
+   grotesque); Pete's rock carries glowing gold veins that run hot only
+   while every organ truly lives; the Ledger's cards are buried strata,
+   peeled layer by layer. The Liquid Glass Manor system stays underneath. */
+body{background:#000}
+.bg-glow{background:radial-gradient(90% 55% at 50% 0%,rgba(38,32,84,.34),transparent 60%),radial-gradient(60% 40% at 85% 12%,rgba(212,175,55,.05),transparent 60%)}
+
+/* top bar: wordmark · pill nav · actions (the reference's top strip) */
+.topbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:12px 20px;text-align:center;padding:26px 16px 4px}
+.brand{order:1;font-size:15px;letter-spacing:2.6px}
+.pill-nav{order:2;display:flex;gap:2px;background:rgba(16,15,26,.72);border:1px solid rgba(255,255,255,.09);border-radius:999px;padding:4px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.pill-nav a{color:var(--dim);text-decoration:none;font-size:12px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;padding:8px 14px;border-radius:999px;transition:color .25s,background .25s}
+.pill-nav a:hover{color:var(--bone);background:rgba(255,255,255,.06)}
+.topbar-actions{order:3;display:flex;gap:8px}
+.guide-pill{background:var(--bone);color:#0b0a10;border-color:var(--bone);font-weight:700}
+.guide-pill:hover{background:#fff;color:#000}
+.topbar-sub{order:4;flex-basis:100%;margin-top:2px}
+#overallBadge{order:5;width:fit-content;margin:4px auto 0}
+.home-line{order:6;flex-basis:100%;justify-content:center;max-width:none}
+
+/* hero headline: italic serif line over a giant grotesque line */
+.hero-copy{text-align:center;padding:14px 6px 20px}
+.hero-title{margin:0;line-height:.98}
+.ht-line{display:block}
+.ht-serif{font-family:var(--serif);font-style:italic;font-weight:600;font-size:clamp(30px,4.6vw,52px);color:var(--bone);letter-spacing:.01em;animation:htRise .9s cubic-bezier(.2,.7,.2,1) both}
+.ht-grot{font-family:var(--sans);font-weight:800;font-size:clamp(46px,8.6vw,104px);letter-spacing:-.015em;text-transform:uppercase;
+  background:linear-gradient(100deg,#8a6d1f 0%,#d4af37 28%,#fff3c4 50%,#d4af37 72%,#8a6d1f 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  animation:htRise .9s cubic-bezier(.2,.7,.2,1) .14s both}
+@keyframes htRise{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:translateY(0)}}
+.hero-sub{margin-top:12px}
+
+/* the rock + his gold veins */
+.scene-rock{position:absolute;left:0;right:0;bottom:0;width:100%;height:47%;z-index:1;pointer-events:none}
+.rock-body{fill:#0d0d15;stroke:rgba(212,175,55,.16);stroke-width:1}
+.rock-strata{fill:none;stroke:rgba(255,255,255,.05);stroke-width:10}
+.vein{fill:none;stroke:var(--gold);stroke-width:2.2;stroke-linecap:round;opacity:.34;
+  filter:drop-shadow(0 0 5px rgba(212,175,55,.55));animation:veinPulse 3.4s ease-in-out infinite}
+.vein:nth-of-type(4){animation-delay:.7s}.vein:nth-of-type(5){animation-delay:1.3s}
+@keyframes veinPulse{0%,100%{opacity:.26}50%{opacity:.52}}
+body.veins-hot .vein{opacity:.85;filter:drop-shadow(0 0 9px rgba(243,210,122,.9));animation-duration:1.6s}
+
+/* hero captions: small print left, invitation + gold pill right */
+.hero-captions{display:flex;justify-content:space-between;align-items:flex-end;gap:26px;margin-top:20px;padding:0 4px}
+.hero-captions p{font-size:12.5px;line-height:1.65;color:var(--dim);margin:0}
+.cap-left{max-width:340px}
+.cap-right{max-width:360px;text-align:right}
+.peel-btn{margin-top:12px;background:linear-gradient(180deg,var(--gold-hi),var(--gold));color:#171106;border:none;
+  font:700 12.5px var(--sans);letter-spacing:1.6px;text-transform:uppercase;padding:12px 22px;border-radius:999px;cursor:pointer;
+  box-shadow:0 8px 22px rgba(212,175,55,.28);transition:transform .2s,box-shadow .2s}
+.peel-btn:hover{transform:translateY(-1px);box-shadow:0 12px 26px rgba(212,175,55,.36)}
+
+/* panels wear a strata edge */
+.panel{position:relative;overflow:hidden}
+.panel::before{content:"";position:absolute;top:0;left:0;right:0;height:5px;z-index:3;pointer-events:none;
+  background:repeating-linear-gradient(90deg,#101018 0 46px,#16161f 46px 92px,#0c0c12 92px 138px);
+  box-shadow:0 1px 0 rgba(212,175,55,.22)}
+
+/* the peel: ledger cards rise out of their strata, layer by layer */
+#organGrid .organ{transition:opacity .7s ease,transform .7s ease,border-color .3s,box-shadow .3s}
+#organGrid .organ.strata-covered{opacity:0;transform:translateY(30px)}
+#organGrid .organ.peeled{opacity:1;transform:translateY(0)}
+
+@media (max-width:760px){
+  .pill-nav a{padding:8px 10px;font-size:11px}
+  .hero-captions{flex-direction:column;align-items:flex-start}
+  .cap-right{text-align:left}
+  .brand{font-size:13px}
+}
+@media (prefers-reduced-motion:reduce){
+  .ht-serif,.ht-grot{animation:none}
+  .vein{animation:none}
+  #organGrid .organ{transition:none}
+}

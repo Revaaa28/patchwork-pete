@@ -1,4 +1,34 @@
-# Patchwork Pete — Design System (UI v3 "Liquid Glass Manor")
+# Patchwork Pete — Design System (UI v4 "Strata" on the v3 "Liquid Glass Manor" base)
+
+## UI v4 "Strata" (2026-11-17, Rev's pick: MotionSites' *Interactive Discovery*)
+
+Rev chose the *Interactive Discovery* design on MotionSites Studio as the
+reference for a second overhaul (its own AI customizer is paywalled; the
+design was rebuilt by hand into this codebase). What was taken from it:
+
+- **Pure-black hero field** and its top strip: wordmark left, a dark glass
+  **pill nav** centre, a white pill action right (our Guide button).
+- **Two-line giant headline**: an italic serif line (*"Stitched from"*) over
+  a bold grotesque line (*"LIVING DATA"*) — ours in metallic gold, with a
+  staggered line-reveal on load.
+- **The specimen as the rock**: Pete's chamber floor is now a dark volcanic
+  rock silhouette with **glowing gold veins** (the reference's lava veins,
+  swapped orange → gold). The veins pulse idly and run *hot* — brighter,
+  faster — only while all five organs truly read alive (`body.veins-hot`,
+  driven by the same real state as the IT'S ALIVE moment; never faked).
+- **Small-print captions** at the hero's foot, left and right, with a single
+  gold pill CTA — *"Peel His Layers"* — for the reference's "Start Digging".
+- **The peel**: the Specimen Ledger's cards begin as buried strata and are
+  uncovered layer by layer when the Ledger first scrolls into view (or the
+  CTA is pressed) — the reference's "peel back the crust" made literal with
+  Pete's data layers. Panels wear a thin strata edge in the same motif.
+
+Everything from v3 below (glass, palette, type, honesty rules, the guided
+flow, the Data Menu) is unchanged underneath.
+
+---
+
+# UI v3 "Liquid Glass Manor" (base system)
 
 Generated with the **UI UX Pro Max** design-intelligence skill, then fit-checked
 against the product instead of applied blindly.

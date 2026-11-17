@@ -371,6 +371,19 @@ function maybeCelebrateAlive(payload) {
   }, 1100);
 }
 
+/* ── THE PEEL — the Ledger's organ cards begin as buried strata and are
+   uncovered layer by layer, once, when the Ledger first comes into view
+   (or when the hero's "Peel His Layers" button is pressed). Pure theatre
+   on top of the same honest readings; re-renders keep them uncovered. ── */
+let ledgerPeeled = false;
+function peelLedger() {
+  if (ledgerPeeled) return;
+  ledgerPeeled = true;
+  document.querySelectorAll('#organGrid .organ.strata-covered').forEach((el, i) => {
+    setTimeout(() => el.classList.add('peeled'), 130 * i);
+  });
+}
+
 function render(payload) {
   current = payload;
   const s = payload.state;
@@ -380,6 +393,10 @@ function render(payload) {
   $('petSummary').textContent = s.summary;
   document.body.classList.add('revealed');
   maybeCelebrateAlive(payload);
+  // The gold veins in his rock run hot only while every organ truly lives.
+  const allAlive = ['heart', 'mood', 'lungs', 'brain', 'stomach']
+    .every((k) => payload.organs[k] && payload.organs[k].ok);
+  document.body.classList.toggle('veins-hot', allAlive);
 
   /* ── feed the living atmosphere with the REAL readings ── */
   const heart = payload.organs.heart;
@@ -473,7 +490,7 @@ function render(payload) {
       : o.stale
         ? `stale · read at ${fmtTime(o.fetchedAt)} · the live API did not answer just now`
         : `${o.ok ? 'last reading' : 'last attempt'} ${fmtTime(o.fetchedAt)}${o.cached ? ' · cached' : ''}`;
-    return `<div class="organ${deadCls}${o.stale ? ' stale' : ''}" style="animation-delay:${(i * 80).toFixed(0)}ms"><div class="organ-head"><span class="organ-name">${name} ${staleTag}</span><span class="jewel${o.ok ? '' : o.awaiting ? ' awaiting' : ' dead'}${o.stale ? ' stale' : ''}"></span></div>` +
+    return `<div class="organ${deadCls}${o.stale ? ' stale' : ''}${ledgerPeeled ? ' peeled' : ' strata-covered'}" style="animation-delay:${(i * 80).toFixed(0)}ms"><div class="organ-head"><span class="organ-name">${name} ${staleTag}</span><span class="jewel${o.ok ? '' : o.awaiting ? ' awaiting' : ' dead'}${o.stale ? ' stale' : ''}"></span></div>` +
       `<div class="organ-source">${escapeHtml(srcLabel)}</div>${body}` +
       `<div class="organ-meta">${meta}</div></div>`;
   }).join('');
@@ -1089,6 +1106,18 @@ $('guideBack').addEventListener('click', () => {
 });
 $('guideSkip').addEventListener('click', closeGuide);
 $('guideBtn').addEventListener('click', showGuide);
+$('peelBtn').addEventListener('click', () => {
+  $('ledgerPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  setTimeout(peelLedger, 450);
+});
+if ('IntersectionObserver' in window) {
+  const peelWatch = new IntersectionObserver((entries) => {
+    if (entries.some((e) => e.isIntersecting)) { peelLedger(); peelWatch.disconnect(); }
+  }, { threshold: 0.18 });
+  peelWatch.observe($('ledgerPanel'));
+} else {
+  ledgerPeeled = true;
+}
 
 load();
 setInterval(() => load(), 120000);
