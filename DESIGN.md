@@ -1,4 +1,21 @@
-# Patchwork Pete — Design System (UI v4 "Strata" on the v3 "Liquid Glass Manor" base)
+# Patchwork Pete — Design System (UI v5 on the v4 "Strata" / v3 "Liquid Glass Manor" base)
+
+## UI v5 (2026-11-17) — the reference composition, applied in full
+
+Rev's correction on v4: motifs on the old layout still read as "an ordinary
+web page". v5 therefore applies *Interactive Discovery*'s actual composition:
+the first screen is one full-viewport black hero — top strip, two-line giant
+headline, the specimen on a rock massif filling the lower two-thirds of the
+scene, small-print captions pinned to the scene's bottom corners with the
+single gold pill — and **no panel card on the first screen**. Everything else
+(vitals, home picker, Data Menu, Ledger) flows below the fold in a
+single-column exhibit layout. (MotionSites' own "Customize" AI is paywalled
+at $25–99/mo with no free tier; Rev was informed, nothing was purchased, and
+the design was rebuilt by hand as before.)
+
+---
+
+# UI v4 "Strata" (motif layer, still in force)
 
 ## UI v4 "Strata" (2026-11-17, Rev's pick: MotionSites' *Interactive Discovery*)
 

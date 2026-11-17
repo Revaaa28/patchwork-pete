@@ -66,12 +66,13 @@
       <div class="scene" id="scene">
         <div class="scene-sky"></div>
         <svg class="scene-rock" viewBox="0 0 600 240" preserveAspectRatio="none" aria-hidden="true">
-          <path class="rock-body" d="M0 240 L0 150 L52 118 L104 138 L158 96 L214 122 L268 78 L330 108 L386 66 L442 100 L498 74 L552 104 L600 84 L600 240 Z"/>
-          <path class="rock-strata" d="M0 176 L84 158 L196 178 L318 156 L436 176 L600 152"/>
-          <path class="rock-strata" d="M0 208 L110 192 L252 210 L398 190 L600 206"/>
-          <path class="vein" d="M96 240 L128 178 L118 138 L156 100"/>
-          <path class="vein" d="M318 240 L306 184 L330 140 L316 96 L344 66"/>
-          <path class="vein" d="M492 240 L478 190 L504 148 L492 108"/>
+          <path class="rock-body" d="M0 240 L0 132 L44 108 L86 126 L128 84 L176 112 L224 62 L276 96 L322 48 L372 84 L418 44 L466 78 L512 56 L556 88 L600 66 L600 240 Z"/>
+          <path class="rock-strata" d="M0 158 L84 140 L196 160 L318 138 L436 158 L600 134"/>
+          <path class="rock-strata" d="M0 196 L110 180 L252 198 L398 178 L600 194"/>
+          <path class="vein" d="M70 240 L96 172 L84 128 L118 88"/>
+          <path class="vein" d="M212 240 L200 178 L228 128 L216 78 L244 52"/>
+          <path class="vein" d="M356 240 L344 182 L372 134 L358 84"/>
+          <path class="vein" d="M492 240 L478 186 L506 140 L492 96 L520 66"/>
         </svg>
         <div class="arch" aria-hidden="true"><div class="arch-mullion"></div></div>
         <div class="spotlight" aria-hidden="true"></div>
@@ -82,6 +83,13 @@
         <div class="alive-word" aria-hidden="true">IT’S ALIVE!</div>
         <div class="scene-floor" aria-hidden="true"></div>
         <div class="plaque" aria-hidden="true">✦ &nbsp;EXHIBIT Nº 1 — “PETE”&nbsp; ✦</div>
+        <div class="hero-captions">
+          <p class="cap-left">Every stitch is a living feed — a price, a sky, a breath, a fact, a commit. Nothing here is a picture of data. All of it <em>is</em> data, still warm.</p>
+          <div class="cap-right">
+            <p>Peel back his layers in the Specimen Ledger below: six organs, six provenances, each one read live — or grey, honestly, when its world goes silent.</p>
+            <button id="peelBtn" class="peel-btn" type="button">Peel His Layers</button>
+          </div>
+        </div>
       </div>
       <div class="stage-side">
         <p id="petSummary" class="pet-summary">Stitching organs together…</p>
@@ -97,13 +105,6 @@
           <button id="hauntBtn" class="speak" aria-pressed="false" title="Synthesized ambience — wind, a distant bell, creaks and an original music-box melody, generated live in your browser. No audio files.">Haunt the Lab</button>
         </div>
         <div class="hint">Feed = fresh GitHub commits · Teach = a new Wikipedia fact · Pete's voice runs in your browser (Web Speech API — deep, slow, and a little haunted). “Haunt the Lab” is synthesized ambience — WebAudio wind, bells, creaks and an original music-box melody generated live, no audio files. The gold thread is real: every stitch is a live API.</div>
-      </div>
-    </div>
-    <div class="hero-captions">
-      <p class="cap-left">Every stitch is a living feed — a price, a sky, a breath, a fact, a commit. Nothing here is a picture of data. All of it <em>is</em> data, still warm.</p>
-      <div class="cap-right">
-        <p>Peel back his layers in the Specimen Ledger below: six organs, six provenances, each one read live — or grey, honestly, when its world goes silent.</p>
-        <button id="peelBtn" class="peel-btn" type="button">Peel His Layers</button>
       </div>
     </div>
   </section>
