@@ -334,13 +334,24 @@ function readingText(key, o) {
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
+/* Inline SVG icons (UI UX Pro Max checklist: no emoji as icons) */
+const IC = (inner, fill) => `<svg class="ic" viewBox="0 0 24 24" ${fill ? 'fill="currentColor"' : 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"'} aria-hidden="true">${inner}</svg>`;
+const ICONS = {
+  heart: IC('<path d="M12 20.3C6.9 16.4 3.6 13.1 3.6 9.4 3.6 6.5 5.7 4.6 8.1 4.6c1.5 0 3 .8 3.9 2.1.9-1.3 2.4-2.1 3.9-2.1 2.4 0 4.5 1.9 4.5 4.8 0 3.7-3.3 7-8.4 10.9z"/>'),
+  weather: IC('<circle cx="7.2" cy="6.8" r="2.4"/><path d="M7.2 1.8v1.4M2.4 6.8h1.4M4 3.2l1 1M10.4 3.2l-1 1"/><path d="M8 20.2h9.3a3.9 3.9 0 0 0 .8-7.7 5.4 5.4 0 0 0-10.3 1.2A3.1 3.1 0 0 0 8 20.2z"/>'),
+  air: IC('<path d="M3 8.2h9.3a2.6 2.6 0 1 0-2.5-3.4"/><path d="M2.6 12.6h13.6a2.6 2.6 0 1 1-2.5 3.4"/><path d="M3 16.8h5.5"/>'),
+  brain: IC('<path d="M12 6.2C10.2 4.7 8 4.2 5.4 4.2H4v13.6h1.4c2.6 0 4.8.5 6.6 2 1.8-1.5 4-2 6.6-2H20V4.2h-1.4c-2.6 0-4.8.5-6.6 2z"/><path d="M12 6.2v13.6"/>'),
+  stomach: IC('<path d="M4.5 16.8a7.5 7.5 0 0 1 15 0"/><path d="M2.8 16.8h18.4"/><path d="M2.8 20.4h18.4"/><circle cx="12" cy="7.4" r="1.1"/>'),
+  voice: IC('<path d="M4 9.5v5h3.5L12 18.6V5.4L7.5 9.5H4z"/><path d="M15.5 9.2a4 4 0 0 1 0 5.6"/><path d="M18 6.8a7.4 7.4 0 0 1 0 10.4"/>'),
+  diary: IC('<path d="M6.5 3.6H18a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1H6.8A1.8 1.8 0 0 1 5 19.2V5.4a1.8 1.8 0 0 1 1.5-1.8z"/><path d="M14.8 3.6v5.6l-2.1-1.5-2.1 1.5V3.6"/>'),
+};
 const ORGAN_META = [
-  ['heart', '❤️ Heart', 'CoinGecko public API — BTC/USD'],
-  ['mood', '🌦️ Face / Mood', 'Open-Meteo weather — where Pete lives'],
-  ['lungs', '🫁 Lungs', 'Open-Meteo Air Quality — where Pete lives'],
-  ['brain', '🧠 Brain', 'Wikipedia — random article'],
-  ['stomach', '🍽️ Stomach', 'GitHub commits — @Revaaa28'],
-  ['voice', '🔊 Voice', 'Web Speech API — your browser'],
+  ['heart', ICONS.heart + 'Heart', 'CoinGecko public API — BTC/USD'],
+  ['mood', ICONS.weather + 'Face / Mood', 'Open-Meteo weather — where Pete lives'],
+  ['lungs', ICONS.air + 'Lungs', 'Open-Meteo Air Quality — where Pete lives'],
+  ['brain', ICONS.brain + 'Brain', 'Wikipedia — random article'],
+  ['stomach', ICONS.stomach + 'Stomach', 'GitHub commits — @Revaaa28'],
+  ['voice', ICONS.voice + 'Voice', 'Web Speech API — your browser'],
 ];
 
 function render(payload) {
@@ -365,8 +376,8 @@ function render(payload) {
     ATMO.heartText = '';
   }
   $('ecgLabel').innerHTML = ATMO.heartAlive
-    ? `♥ <b>${ATMO.bpm} BPM</b> — Pete's heartbeat, set by the market · ${escapeHtml(ATMO.heartText)}`
-    : '♥ flatline — the heart organ is silent. Pete will not fake a pulse.';
+    ? `${ICONS.heart}<b>${ATMO.bpm} BPM</b> — Pete's heartbeat, set by the market · ${escapeHtml(ATMO.heartText)}`
+    : ICONS.heart + 'flatline — the heart organ is silent. Pete will not fake a pulse.';
 
   const b = s.scores.breathing;
   if (typeof b === 'number') {
@@ -986,13 +997,13 @@ const GUIDE_STEPS = [
   {
     title: 'His Organs Are Data',
     body: `<p>Each stitch is a living feed:</p><ul class="guide-organs">
-      <li>❤️ <b>Heart</b> — the Bitcoin market</li>
-      <li>🌦️ <b>Face</b> — the weather where he lives</li>
-      <li>🫁 <b>Lungs</b> — the air quality where he lives</li>
-      <li>🧠 <b>Brain</b> — Wikipedia, one fact at a time</li>
-      <li>🍽️ <b>Stomach</b> — GitHub commits are his food</li>
-      <li>🔊 <b>Voice</b> — your own browser, deep and haunted</li>
-      <li>📓 <b>Diary</b> — written from his real state, never invented</li></ul>
+      <li>${ICONS.heart}<b>Heart</b> — the Bitcoin market</li>
+      <li>${ICONS.weather}<b>Face</b> — the weather where he lives</li>
+      <li>${ICONS.air}<b>Lungs</b> — the air quality where he lives</li>
+      <li>${ICONS.brain}<b>Brain</b> — Wikipedia, one fact at a time</li>
+      <li>${ICONS.stomach}<b>Stomach</b> — GitHub commits are his food</li>
+      <li>${ICONS.voice}<b>Voice</b> — your own browser, deep and haunted</li>
+      <li>${ICONS.diary}<b>Diary</b> — written from his real state, never invented</li></ul>
       <p>If an API dies, that organ goes grey and Pete limps. <b>He never fakes a reading.</b></p>`,
   },
   {
