@@ -56,7 +56,59 @@ async function firmsHotspots(fetchFn, key, loc) {
   }
 }
 
-async function getLungs({ force = false, fetchFn, location, firmsKey, retryDelays, sleep } = {}) {
+async function attachFires(data, fetchFn, firmsKey, loc) {
+  const fkey = firmsKey !== undefined ? firmsKey : process.env.FIRMS_MAP_KEY;
+  if (fkey) {
+    const n = await firmsHotspots(fetchFn, fkey, loc);
+    data.fireHotspots24h = n;
+    data.fireSource = n === null
+      ? 'NASA FIRMS configured but did not answer'
+      : 'NASA FIRMS VIIRS — fire hotspots, last 24h around this location';
+  }
+  return data;
+}
+
+// WAQI (fallback) — the World Air Quality Index project's geo feed. Added
+// 2026-11-17 after Open-Meteo AQ began answering HTTP 429 from Render's
+// shared IP with no fallback to catch it: Pete limped on a dead organ
+// while his other organs all had labelled fallbacks. WAQI needs a free
+// token (WAQI_TOKEN); without one this source simply does not exist and
+// the organ behaves exactly as before. WAQI's headline AQI is the US EPA
+// index; its per-pollutant values are real station readings. Its time
+// field carries a UTC offset, NOT an IANA timezone — timezone stays null
+// rather than inventing one (the stomach's day boundary then rides on
+// the mood organ's timezone or UTC, same as the mood fallbacks).
+async function readWaqi(fetchFn, token, loc, opts) {
+  const url = `https://api.waqi.info/feed/geo:${loc.lat};${loc.lon}/?token=${encodeURIComponent(token)}`;
+  const json = await fetchJson(url, { fetchFn, ...opts });
+  if (!json || json.status !== 'ok' || !json.data) {
+    throw new Error(`WAQI answered status ${json && json.status ? json.status : 'unknown'}`);
+  }
+  const d = json.data;
+  const iaqi = d.iaqi || {};
+  const num = (v) => (typeof v === 'number' ? v : null);
+  const data = {
+    pm25: num(iaqi.pm25 && iaqi.pm25.v),
+    pm10: num(iaqi.pm10 && iaqi.pm10.v),
+    aqiUs: num(d.aqi),
+    aqiEu: null,
+    condition: null,
+    location: loc.place,
+    lat: loc.lat,
+    lon: loc.lon,
+    timezone: null,
+    fireHotspots24h: null,
+    fireSource: 'NASA FIRMS fire watch — not stitched into this exhibit yet',
+    station: d.city && typeof d.city.name === 'string' ? d.city.name : null,
+  };
+  if (data.aqiUs === null && data.pm25 === null) {
+    throw new Error('Unexpected WAQI payload shape');
+  }
+  data.condition = conditionForAir(data);
+  return data;
+}
+
+async function getLungs({ force = false, fetchFn, location, firmsKey, waqiToken, retryDelays, sleep } = {}) {
   const loc = normalizeLocation(location);
   const fetchedAt = new Date().toISOString();
   if (!loc) {
@@ -96,15 +148,7 @@ async function getLungs({ force = false, fetchFn, location, firmsKey, retryDelay
       fireSource: 'NASA FIRMS fire watch — not stitched into this exhibit yet',
     };
     data.condition = conditionForAir(data);
-
-    const fkey = firmsKey !== undefined ? firmsKey : process.env.FIRMS_MAP_KEY;
-    if (fkey) {
-      const n = await firmsHotspots(fetchFn, fkey, loc);
-      data.fireHotspots24h = n;
-      data.fireSource = n === null
-        ? 'NASA FIRMS configured but did not answer'
-        : 'NASA FIRMS VIIRS — fire hotspots, last 24h around this location';
-    }
+    await attachFires(data, fetchFn, firmsKey, loc);
 
     return cache.set(key, {
       organ: 'lungs',
@@ -116,24 +160,52 @@ async function getLungs({ force = false, fetchFn, location, firmsKey, retryDelay
       cached: false,
     });
   } catch (err) {
-    const msg = String(err && err.message ? err.message : err);
-    const last = cache.getStale(key);
-    if (last && last.ok) {
-      // Stale-while-error for THIS place only: the last real air reading,
-      // labelled stale with its original fetchedAt — never fresh. (With
-      // no last good, the catch below keeps breathing honestly unknown.)
-      return { ...last, stale: true, error: msg, cached: false };
+    // Primary down (from Render's shared IP, Open-Meteo AQ's 429 is the
+    // usual cause): WAQI serves as the labelled fallback when a token is
+    // configured — a real reading from a real station network, named as
+    // what it is, never passed off as Open-Meteo.
+    const token = waqiToken !== undefined ? waqiToken : process.env.WAQI_TOKEN;
+    if (token) {
+      try {
+        const data = await readWaqi(fetchFn, token, loc, { retryDelays, sleep });
+        await attachFires(data, fetchFn, firmsKey, loc);
+        return cache.set(key, {
+          organ: 'lungs',
+          source: data.station
+            ? `WAQI (fallback) — World Air Quality Index · station ${data.station}`
+            : 'WAQI (fallback) — World Air Quality Index',
+          ok: true,
+          data,
+          error: null,
+          fetchedAt,
+          cached: false,
+        });
+      } catch (waqiErr) {
+        const waqiMsg = String(waqiErr && waqiErr.message ? waqiErr.message : waqiErr);
+        return lungsFailure(key, `${String(err && err.message ? err.message : err)}; WAQI (fallback) also failed: ${waqiMsg}`, fetchedAt);
+      }
     }
-    return {
-      organ: 'lungs',
-      source: 'Open-Meteo Air Quality',
-      ok: false,
-      data: null,
-      error: msg,
-      fetchedAt,
-      cached: false,
-    };
+    return lungsFailure(key, String(err && err.message ? err.message : err), fetchedAt);
   }
+}
+
+function lungsFailure(key, msg, fetchedAt) {
+  const last = cache.getStale(key);
+  if (last && last.ok) {
+    // Stale-while-error for THIS place only: the last real air reading,
+    // labelled stale with its original fetchedAt — never fresh. (With
+    // no last good, the return below keeps breathing honestly unknown.)
+    return { ...last, stale: true, error: msg, cached: false };
+  }
+  return {
+    organ: 'lungs',
+    source: 'Open-Meteo Air Quality',
+    ok: false,
+    data: null,
+    error: msg,
+    fetchedAt,
+    cached: false,
+  };
 }
 
 module.exports = { getLungs, conditionForAir };

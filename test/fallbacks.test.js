@@ -18,6 +18,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { getHeart } = require('../src/organs/heart');
 const { getMood, conditionForMetSymbol } = require('../src/organs/mood');
+const { getLungs } = require('../src/organs/lungs');
 
 const noSleep = async () => {};
 const FAST = { retryDelays: [0, 0, 0], sleep: noSleep };
@@ -220,4 +221,62 @@ test('refresher tracks at most 5 recent locations, most recent last', () => {
   assert.equal(recentLocations.size, 5);
   trackLocation(null); // no home chosen: nothing to track, no crash
   assert.equal(recentLocations.size, 5);
+});
+
+/* ── lungs: Open-Meteo AQ down -> WAQI serves, labelled ── */
+
+test('lungs: Open-Meteo AQ 429 -> WAQI (fallback) serves, labelled, with honest nulls', async () => {
+  const fetchFn = async (url) => {
+    if (url.includes('air-quality-api.open-meteo.com')) return res(429, {});
+    if (url.includes('api.waqi.info/feed/geo:')) {
+      return res(200, {
+        status: 'ok',
+        data: {
+          aqi: 154,
+          iaqi: { pm25: { v: 89.4 }, pm10: { v: 91.5 } },
+          city: { name: 'Anand Vihar, Delhi' },
+          time: { tz: '+05:30' },
+        },
+      });
+    }
+    throw new Error(`unexpected URL in test: ${url}`);
+  };
+  const loc = { lat: 28.61, lon: 77.21, place: 'Fallback Delhi, Testland' };
+  const r = await getLungs({ force: true, fetchFn, ...FAST, location: loc, waqiToken: 'test-token', firmsKey: null });
+  assert.equal(r.ok, true);
+  assert.match(r.source, /WAQI \(fallback\)/);
+  assert.match(r.source, /Anand Vihar, Delhi/);
+  assert.equal(r.data.aqiUs, 154);
+  assert.equal(r.data.pm25, 89.4);
+  assert.equal(r.data.pm10, 91.5);
+  assert.equal(r.data.aqiEu, null); // WAQI carries no European index — null, not invented
+  assert.equal(r.data.timezone, null); // WAQI gives a UTC offset, not an IANA zone — null
+  assert.equal(r.data.condition, 'haze'); // US AQI 154 -> haze band
+  assert.equal(r.data.location, 'Fallback Delhi, Testland');
+});
+
+test('lungs: Open-Meteo AQ and WAQI both down -> dead, error names both', async () => {
+  const fetchFn = async (url) => {
+    if (url.includes('air-quality-api.open-meteo.com')) return res(429, {});
+    if (url.includes('api.waqi.info')) return res(200, { status: 'error', data: 'invalid token' });
+    throw new Error(`unexpected URL in test: ${url}`);
+  };
+  const loc = { lat: -33.86, lon: 151.21, place: 'Fallback Sydney, Testland' };
+  const r = await getLungs({ force: true, fetchFn, ...FAST, location: loc, waqiToken: 'bad-token', firmsKey: null });
+  assert.equal(r.ok, false);
+  assert.equal(r.data, null);
+  assert.match(r.error, /429/);
+  assert.match(r.error, /WAQI \(fallback\) also failed/);
+});
+
+test('lungs: no WAQI token configured -> primary failure behaves as before', async () => {
+  const fetchFn = async (url) => {
+    if (url.includes('air-quality-api.open-meteo.com')) return res(503, {});
+    throw new Error(`unexpected URL in test: ${url}`);
+  };
+  const loc = { lat: 35.68, lon: 139.69, place: 'Fallback Tokyo, Testland' };
+  const r = await getLungs({ force: true, fetchFn, ...FAST, location: loc, waqiToken: null, firmsKey: null });
+  assert.equal(r.ok, false);
+  assert.match(r.error, /503/);
+  assert.doesNotMatch(r.error, /WAQI/);
 });
