@@ -327,7 +327,7 @@ function readingText(key, o) {
     case 'mood': return `<b>${d.condition}</b> over ${escapeHtml(d.location)} · ${d.temperatureC}°C · wind ${d.windKmh} km/h`;
     case 'lungs': return `Air: <b>${d.condition}</b> · PM2.5 <b>${d.pm25}</b> µg/m³ · PM10 ${d.pm10} · US AQI <b>${d.aqiUs}</b>${typeof d.fireHotspots24h === 'number' ? `<br>🔥 ${d.fireHotspots24h} fire hotspot(s) near his home in 24h (NASA FIRMS)` : `<br><span style="color:var(--dim)">🔥 ${escapeHtml(d.fireSource || '')}</span>`}`;
     case 'brain': return d.currentFact ? `Knows: <a href="${d.currentFact.url || '#'}" target="_blank" rel="noopener">${escapeHtml(d.currentFact.title)}</a><br><span style="color:var(--dim)">${escapeHtml((d.currentFact.extract || '').slice(0, 150))}…</span>` : 'Brain is empty.';
-    case 'stomach': return `<b>${d.commitsToday}</b> commit(s) eaten today in ${d.pushesToday} push(es)${d.lastPushAt ? ' · last bite ' + fmtTime(d.lastPushAt) : ''}`;
+    case 'stomach': return `<b>${d.commitsToday}</b> commit(s) eaten today across <b>${d.reposToday ?? 0}</b> repo(s)${d.lastPushAt ? ' · last bite ' + fmtTime(d.lastPushAt) : ''}`;
     default: return '';
   }
 }
@@ -612,7 +612,8 @@ function renderMenu() {
     const commits = Array.isArray(d.recentCommits) ? d.recentCommits : [];
     box.innerHTML = menuMeta(o) + fieldGrid([
       ['Commits eaten today', String(d.commitsToday)],
-      ['Pushes today', String(d.pushesToday)],
+      ['Repos eaten from today', String(d.reposToday ?? 0)],
+      ['Pushes today', typeof d.pushesToday === 'number' ? String(d.pushesToday) : null],
       ['Counting in', d.timezone ? escapeHtml(d.timezone) : null],
       ['Last bite', d.lastPushAt ? fmtTime(d.lastPushAt) : null],
     ])

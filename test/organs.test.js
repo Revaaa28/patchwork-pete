@@ -6,7 +6,7 @@ const { getHeart } = require('../src/organs/heart');
 const { getMood, conditionForCode } = require('../src/organs/mood');
 const { getLungs, conditionForAir } = require('../src/organs/lungs');
 const { normalizeLocation } = require('../src/location');
-const { countCommitsToday } = require('../src/organs/stomach');
+const { countCommitsToday, reposPushedToday } = require('../src/organs/stomach');
 const { templateLine } = require('../src/organs/diary');
 const { computeState } = require('../src/state');
 
@@ -76,6 +76,19 @@ test('stomach "today" follows the chosen home timezone', () => {
   assert.equal(countCommitsToday(events, now, 'UTC').commitsToday, 1); // still "today" in UTC
   assert.equal(countCommitsToday(events, now, 'Asia/Kolkata').commitsToday, 0); // already yesterday in Kolkata
   assert.equal(countCommitsToday(events, now, 'Not/AZone').commitsToday, 1); // invalid tz -> UTC fallback
+});
+
+test('stomach discovery: repos pushed today, home-local day, freshest first', () => {
+  const now = new Date('2026-11-17T04:30:00.000Z'); // 11:30 in Asia/Pontianak (UTC+7)
+  const repos = [
+    { full_name: 'Revaaa28/old', pushed_at: '2026-11-16T10:00:00Z' }, // Nov 16 17:00 Pontianak — yesterday
+    { full_name: 'Revaaa28/patchwork-pete', pushed_at: '2026-11-17T02:00:00Z' },
+    { full_name: 'Revaaa28/fresher', pushed_at: '2026-11-17T04:00:00Z' },
+    { full_name: 'Revaaa28/no-date' },
+    { pushed_at: '2026-11-17T03:00:00Z' }, // no name — dropped, never invented
+  ];
+  const found = reposPushedToday(repos, now, 'Asia/Pontianak');
+  assert.deepEqual(found.map((f) => f.repo), ['Revaaa28/fresher', 'Revaaa28/patchwork-pete']);
 });
 
 test('air condition bands follow US AQI', () => {

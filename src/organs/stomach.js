@@ -7,9 +7,19 @@
 //
 // Reality check (verified live 2026-11-17): the GitHub events feed no longer
 // includes the commits array in PushEvent payloads (only push_id/ref/head/
-// before). So this adapter uses the events feed to find WHICH repos were
-// pushed today, then counts real commits via the commits API per repo
-// (author = the user, since = home midnight). If the commits API fails
+// before) — and worse, the feed itself lags badly: at 08:53 UTC the public
+// feed's newest event was 00:53 UTC, and the repo events feed for a repo
+// created that morning was completely empty, while the commits API already
+// served the day's real commits. So discovery now works the other way:
+// the repos list sorted by pushed_at (fresh, verified against the commits
+// API) says WHICH repos were pushed today; the events feed is kept only as
+// a secondary source (extra repos + push counts when it has caught up).
+// Commits are then counted for real via the commits API per repo
+// (since = home midnight, NO author filter: Pete's keeper commits under a
+// local git identity that GitHub attributes to no account — verified live
+// 2026-11-17, author-login NONE — so an author filter silently dropped
+// every meal, including the Lab Journal; these are the owner's own solo
+// repos, so commits landing on them today are his ecosystem's work). If the commits API fails
 // for a repo, that repo falls back to counting each push as one serving and
 // the reading says so in `method` — it never silently invents a number.
 //
@@ -20,6 +30,7 @@ const { fetchJson, makeKeyedCache } = require('../fetchJson');
 
 const USER = 'Revaaa28';
 const EVENTS_URL = `https://api.github.com/users/${USER}/events/public?per_page=100`;
+const REPOS_URL = `https://api.github.com/users/${USER}/repos?sort=pushed&direction=desc&per_page=100`;
 // Keyed by timezone: "today" is the chosen home's local day, so a reading
 // counted under one home's midnight must never be served under another's.
 const cache = makeKeyedCache(60 * 1000);
@@ -64,6 +75,20 @@ function localMidnightUtcIso(now = new Date(), tz = 'UTC') {
     guess = target;
   }
   return new Date(guess).toISOString();
+}
+
+// Repos whose pushed_at falls on "today" in `tz`, freshest first — the
+// primary discovery route (the events feed lags; pushed_at does not).
+function reposPushedToday(reposJson, now = new Date(), tz = 'UTC') {
+  const today = todayInTz(now, tz);
+  const out = [];
+  for (const r of reposJson || []) {
+    if (!r || typeof r.full_name !== 'string' || !r.pushed_at) continue;
+    if (todayInTz(new Date(r.pushed_at), tz) !== today) continue;
+    out.push({ repo: r.full_name, pushedAt: r.pushed_at });
+  }
+  out.sort((a, b) => (a.pushedAt < b.pushedAt ? 1 : -1));
+  return out;
 }
 
 function todaysPushes(events, now = new Date(), tz = 'UTC') {
@@ -126,31 +151,62 @@ async function getStomach({ force = false, fetchFn, token, retryDelays, sleep, t
   const tok = token !== undefined ? token : process.env.GITHUB_TOKEN;
   if (tok) headers.Authorization = `Bearer ${tok}`;
   try {
-    const events = await fetchJson(EVENTS_URL, { fetchFn, headers, retryDelays, sleep });
-    if (!Array.isArray(events)) throw new Error('Unexpected GitHub payload shape');
-    const pushes = todaysPushes(events, new Date(), tz);
-    const lastPushAt = pushes.length ? pushes.map((p) => p.created_at).sort().pop() : null;
+    const now = new Date();
+    // Discovery: repos-by-pushed_at (fresh) primary, events feed secondary.
+    // Either source may fail or lag on its own; only BOTH failing is fatal.
+    let reposJson = null;
+    let events = null;
+    let firstErr = null;
+    try {
+      reposJson = await fetchJson(REPOS_URL, { fetchFn, headers, retryDelays, sleep });
+      if (!Array.isArray(reposJson)) throw new Error('Unexpected GitHub payload shape');
+    } catch (e) { firstErr = e; }
+    try {
+      events = await fetchJson(EVENTS_URL, { fetchFn, headers, retryDelays, sleep });
+      if (!Array.isArray(events)) throw new Error('Unexpected GitHub payload shape');
+    } catch (e) { if (!firstErr) firstErr = e; }
+    if (!reposJson && !events) throw firstErr || new Error('GitHub did not answer');
+
+    const pushes = events ? todaysPushes(events, now, tz) : [];
+    const pushCountByRepo = {};
+    for (const p of pushes) {
+      const name = p.repo && p.repo.name;
+      if (name) pushCountByRepo[name] = (pushCountByRepo[name] || 0) + 1;
+    }
+    const candidates = reposJson ? reposPushedToday(reposJson, now, tz) : [];
+    const seenRepos = new Set(candidates.map((c) => c.repo));
+    for (const p of pushes) {
+      const name = p.repo && p.repo.name;
+      if (name && !seenRepos.has(name)) {
+        seenRepos.add(name);
+        candidates.push({ repo: name, pushedAt: p.created_at });
+      }
+    }
+    const todaysRepos = candidates.slice(0, 5);
+    const lastPushAt = candidates.length
+      ? candidates.map((c) => c.pushedAt).filter(Boolean).sort().pop() || null
+      : null;
 
     let commitsToday = 0;
     let method = 'commits-api';
     const commitEntries = [];
-    if (pushes.length) {
-      const repos = [...new Set(pushes.map((p) => p.repo && p.repo.name).filter(Boolean))].slice(0, 5);
-      const since = encodeURIComponent(localMidnightUtcIso(new Date(), tz));
-      for (const repo of repos) {
+    if (todaysRepos.length) {
+      const since = encodeURIComponent(localMidnightUtcIso(now, tz));
+      for (const { repo } of todaysRepos) {
         try {
           const commits = await fetchJson(
-            `https://api.github.com/repos/${repo}/commits?author=${USER}&since=${since}&per_page=100`,
+            `https://api.github.com/repos/${repo}/commits?since=${since}&per_page=100`,
             { fetchFn, headers, retryDelays, sleep }
           );
           if (!Array.isArray(commits)) throw new Error('Unexpected commits payload');
           commitsToday += commits.length;
           commitEntries.push(...shapeCommitList(repo, commits));
         } catch {
-          // Honest fallback for this repo: one serving per push. No
-          // commit entries for it — the messages were never fetched.
+          // Honest fallback for this repo: one serving per push the events
+          // feed saw, or a single serving when only pushed_at proves the
+          // push. No commit entries — the messages were never fetched.
           method = 'push-fallback';
-          commitsToday += pushes.filter((p) => p.repo && p.repo.name === repo).length;
+          commitsToday += pushCountByRepo[repo] || 1;
         }
       }
     }
@@ -161,7 +217,8 @@ async function getStomach({ force = false, fetchFn, token, retryDelays, sleep, t
       ok: true,
       data: {
         commitsToday,
-        pushesToday: pushes.length,
+        pushesToday: events ? pushes.length : null,
+        reposToday: todaysRepos.length,
         lastPushAt,
         user: USER,
         method,
@@ -193,4 +250,4 @@ async function getStomach({ force = false, fetchFn, token, retryDelays, sleep, t
   }
 }
 
-module.exports = { getStomach, countCommitsToday, todayInTz, todaysPushes, localMidnightUtcIso, safeTz, shapeCommitList };
+module.exports = { getStomach, countCommitsToday, todayInTz, todaysPushes, reposPushedToday, localMidnightUtcIso, safeTz, shapeCommitList };
