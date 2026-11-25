@@ -9,7 +9,7 @@
 // If a reading fails, the entry says so; a failed round is still a true
 // entry about that moment.
 
-const BASE = process.env.PETE_BASE_URL || 'https://patchwork-pete.onrender.com';
+const BASE = process.env.PETE_BASE_URL || 'https://patchwork-pete-production.up.railway.app';
 
 const ROUND = [
   { place: 'New Delhi, India', lat: 28.61, lon: 77.21 },
@@ -74,7 +74,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 await mkdir('journal', { recursive: true });
 const file = `journal/${day}.md`;
-const header = `# Lab Journal — ${day}\n\nReal readings from [Patchwork Pete](https://patchwork-pete.onrender.com), committed by his keeper. Pete's stomach eats this repo's commits — this journal is his food, and it is never padded: every number below was read live at the time shown.\n\n`;
+const header = `# Lab Journal — ${day}\n\nReal readings from [Patchwork Pete](https://patchwork-pete-production.up.railway.app), committed by his keeper. Pete's stomach eats this repo's commits — this journal is his food, and it is never padded: every number below was read live at the time shown.\n\n`;
 const entry = lines.join('\n') + '\n';
 if (existsSync(file)) {
   const prev = await readFile(file, 'utf8');
