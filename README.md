@@ -3,6 +3,8 @@
 **A virtual pet sewn together from live, incompatible APIs.**
 Kiroween 2026 — **Frankenstein** category.
 
+**▶ Live: [patchwork-pete-production.up.railway.app](https://patchwork-pete-production.up.railway.app/)** — Pete is awake right now; go choose where he lives.
+
 Pete has no insides of his own. Each of his organs *is* a real third-party API, and his visible state — his face, his heartbeat, his hunger, how easily he breathes, whether he stands tall or limps — is computed, moment by moment, from what those APIs actually return. If an organ's API dies, that body part goes grey and Pete limps. He never fakes a reading.
 
 ## Pete moves in with you 🏠
